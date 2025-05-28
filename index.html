@@ -1,16 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Cosmic Pinball</title>
+    <title>Pinball Moderno</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
-    <div class="controls">
-        <button id="launchButton">Launch Ball</button>
-        <p>Score: <span id="score">0</span> | Balls Left: <span id="balls">3</span></p>
+    <h1>Pinball Moderno</h1>
+    <div class="game-area">
+        <canvas id="pinball" width="400" height="600"></canvas>
+        <div class="score-area">
+            <span id="score">Pontos: 0</span>
+            <button id="restart-btn">Reiniciar</button>
+        </div>
     </div>
+    <p>Use <b>A</b> (esquerda) e <b>L</b> (direita) para controlar as palhetas.</p>
     <script src="script.js"></script>
 </body>
 </html>
