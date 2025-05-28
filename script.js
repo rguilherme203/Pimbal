@@ -9,19 +9,19 @@ function resetGame() {
     // Bola
     ball = {
         x: WIDTH / 2,
-        y: HEIGHT - 100,
-        radius: 12,
-        dx: 2 * (Math.random() > 0.5 ? 1 : -1),
+        y: HEIGHT - 120,
+        radius: 14,
+        dx: 2.5 * (Math.random() > 0.5 ? 1 : -1),
         dy: -4,
         color: "#fff"
     };
 
-    // Palhetas (flippers)
-    const flipperLength = 90;
-    const flipperWidth = 18;
-    const flipperY = HEIGHT - 50;
+    // Palhetas (flippers) maiores e arredondadas
+    const flipperLength = 130;
+    const flipperWidth = 28;
+    const flipperY = HEIGHT - 60;
     leftFlipper = {
-        x: WIDTH / 2 - 70,
+        x: WIDTH / 2 - 80,
         y: flipperY,
         angle: -30,
         isUp: false,
@@ -29,7 +29,7 @@ function resetGame() {
         width: flipperWidth
     };
     rightFlipper = {
-        x: WIDTH / 2 + 70,
+        x: WIDTH / 2 + 80,
         y: flipperY,
         angle: 30,
         isUp: false,
@@ -37,18 +37,23 @@ function resetGame() {
         width: flipperWidth
     };
 
-    // 10 bumpers coloridos, distribuídos
+    // 15 bumpers coloridos, distribuídos
     bumpers = [
-        {x: WIDTH/2, y: 120, r: 18, color: "#ffeb3b"},
-        {x: WIDTH/2-80, y: 170, r: 15, color: "#ff4081"},
-        {x: WIDTH/2+80, y: 170, r: 15, color: "#4caf50"},
-        {x: WIDTH/2-120, y: 250, r: 13, color: "#00bcd4"},
-        {x: WIDTH/2+120, y: 250, r: 13, color: "#e91e63"},
-        {x: WIDTH/2-60, y: 320, r: 15, color: "#ff9800"},
-        {x: WIDTH/2+60, y: 320, r: 15, color: "#3f51b5"},
-        {x: WIDTH/2-40, y: 220, r: 12, color: "#cddc39"},
-        {x: WIDTH/2+40, y: 220, r: 12, color: "#9c27b0"},
-        {x: WIDTH/2, y: 400, r: 18, color: "#00e676"}
+        {x: WIDTH/2, y: 100, r: 18, color: "#ffeb3b"},
+        {x: WIDTH/2-80, y: 150, r: 15, color: "#ff4081"},
+        {x: WIDTH/2+80, y: 150, r: 15, color: "#4caf50"},
+        {x: WIDTH/2-120, y: 220, r: 13, color: "#00bcd4"},
+        {x: WIDTH/2+120, y: 220, r: 13, color: "#e91e63"},
+        {x: WIDTH/2-60, y: 300, r: 15, color: "#ff9800"},
+        {x: WIDTH/2+60, y: 300, r: 15, color: "#3f51b5"},
+        {x: WIDTH/2-40, y: 200, r: 12, color: "#cddc39"},
+        {x: WIDTH/2+40, y: 200, r: 12, color: "#9c27b0"},
+        {x: WIDTH/2, y: 380, r: 18, color: "#00e676"},
+        {x: WIDTH/2-100, y: 400, r: 13, color: "#ff5722"},
+        {x: WIDTH/2+100, y: 400, r: 13, color: "#2196f3"},
+        {x: WIDTH/2-60, y: 480, r: 15, color: "#ffc107"},
+        {x: WIDTH/2+60, y: 480, r: 15, color: "#8bc34a"},
+        {x: WIDTH/2, y: 520, r: 18, color: "#607d8b"}
     ];
 
     score = 0;
@@ -58,14 +63,14 @@ function resetGame() {
     loop();
 }
 
-// Controle das palhetas
-document.addEventListener('keydown', e => {
-    if (e.key.toLowerCase() === 'a') leftFlipper.isUp = true;
-    if (e.key.toLowerCase() === 'l') rightFlipper.isUp = true;
+// Controle das palhetas (robusto para A/a e L/l)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = true;
+    if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = true;
 });
-document.addEventListener('keyup', e => {
-    if (e.key.toLowerCase() === 'a') leftFlipper.isUp = false;
-    if (e.key.toLowerCase() === 'l') rightFlipper.isUp = false;
+document.addEventListener('keyup', function(e) {
+    if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = false;
+    if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = false;
 });
 
 document.getElementById('restart-btn').onclick = resetGame;
@@ -84,29 +89,29 @@ function drawBall() {
 function drawFlipper(f, isLeft) {
     ctx.save();
     ctx.translate(f.x, f.y);
-    let angle = isLeft ? (f.isUp ? -Math.PI/5 : Math.PI/8) : (f.isUp ? Math.PI/5 : -Math.PI/8);
+    let angle = isLeft ? (f.isUp ? -Math.PI/4 : Math.PI/7) : (f.isUp ? Math.PI/4 : -Math.PI/7);
     ctx.rotate(angle);
     ctx.fillStyle = isLeft ? "#ff4081" : "#4caf50";
     ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    roundRect(ctx, -f.length/2, -f.width/2, f.length, f.width, 8);
+    roundedFlipper(ctx, -f.length/2, -f.width/2, f.length, f.width, f.width/2.2);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
 }
 
-// Função para desenhar retângulo arredondado (compatível com todos navegadores)
-function roundRect(ctx, x, y, w, h, r) {
+// Função para desenhar palheta arredondada
+function roundedFlipper(ctx, x, y, w, h, r) {
     ctx.moveTo(x + r, y);
     ctx.lineTo(x + w - r, y);
-    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
     ctx.lineTo(x + w, y + h - r);
-    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
     ctx.lineTo(x + r, y + h);
-    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
     ctx.lineTo(x, y + r);
-    ctx.arcTo(x, y, x + r, y, r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
 }
 
 function drawBumpers() {
@@ -173,11 +178,11 @@ function checkFlipperCollision(f, isLeft) {
     // Área aproximada da palheta
     let fx = f.x;
     let fy = f.y;
-    let angle = isLeft ? (f.isUp ? -Math.PI/5 : Math.PI/8) : (f.isUp ? Math.PI/5 : -Math.PI/8);
+    let angle = isLeft ? (f.isUp ? -Math.PI/4 : Math.PI/7) : (f.isUp ? Math.PI/4 : -Math.PI/7);
     let flipperEndX = fx + Math.cos(angle) * f.length/2;
     let flipperEndY = fy + Math.sin(angle) * f.length/2;
     let dist = Math.hypot(ball.x - flipperEndX, ball.y - flipperEndY);
-    if (dist < ball.radius + f.width/2 + 2 && ball.y < fy + 10 && ball.y > fy - 40) {
+    if (dist < ball.radius + f.width/2 + 2 && ball.y < fy + 20 && ball.y > fy - 60) {
         ball.dy = -Math.abs(ball.dy);
         ball.dx += (isLeft ? -1 : 1) * 1.2 * Math.random();
         score += 2;
