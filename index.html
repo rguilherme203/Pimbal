@@ -2,163 +2,440 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Plataformer Avançado</title>
+  <title>Plataformer Realista</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    canvas { background: #1e293b; display: block; margin: 0 auto; border-radius: 16px; box-shadow: 0 8px 32px #000a; }
+    .hud { font-family: Arial, sans-serif; }
+  </style>
 </head>
-<body class="bg-gradient-to-b from-blue-900 to-gray-900 min-h-screen">
-  <div id="root"></div>
-  <!-- React e Babel CDN -->
-  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Código React direto no HTML -->
-  <script type="text/babel">
-    function App() {
-      const [showShop, setShowShop] = React.useState(false);
-      const [coins, setCoins] = React.useState(0);
-      const [weapon, setWeapon] = React.useState("Pistola");
-      const [item, setItem] = React.useState("Nenhum");
-      const [specialReady, setSpecialReady] = React.useState(true);
-      const [lives, setLives] = React.useState(3);
-      const [level, setLevel] = React.useState(1);
-      const [msg, setMsg] = React.useState("");
-      const [enemyType, setEnemyType] = React.useState("Zumbi");
-      const [dogActive, setDogActive] = React.useState(false);
+<body class="bg-gradient-to-b from-blue-900 to-gray-900 min-h-screen flex flex-col items-center">
+  <h1 class="text-2xl text-white font-bold mt-6 mb-2">Plataformer Realista</h1>
+  <div class="hud flex gap-6 text-white text-lg mb-2">
+    <span id="hud-lives">❤️ 3</span>
+    <span id="hud-coins">🪙 0</span>
+    <span id="hud-level">Fase 1</span>
+  </div>
+  <canvas id="game" width="800" height="480"></canvas>
+  <div class="text-white mt-2 text-sm">Controles: ← → ou A/D para andar, ↑ ou W para pular, ↓ ou S para descer escada, Espaço para atacar</div>
+  <div id="msg" class="text-yellow-200 text-lg mt-2"></div>
+  <script type="text/javascript">
+    // --- Configurações ---
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const GRAVITY = 0.7, JUMP = -13, SPEED = 4, LADDER_SPEED = 2.5;
+    const BLOCK = 40, PLAYER_W = 28, PLAYER_H = 48;
+    const COLORS = {
+      bg: "#1e293b", block: "#64748b", ladder: "#fbbf24", water: "#38bdf8", trap: "#ef4444",
+      coin: "#fde047", enemy: "#f87171", boss: "#a21caf", player: "#facc15", arm: "#fbbf24", leg: "#fbbf24"
+    };
 
-      // Simulação de física e ações
-      function buy(type) {
-        if (type === "arma" && coins >= 10 && weapon !== "Metralhadora") {
-          setWeapon("Metralhadora");
-          setCoins(coins - 10);
-          setMsg("Você comprou uma Metralhadora!");
-        } else if (type === "jetpack" && coins >= 8 && item !== "Jetpack") {
-          setItem("Jetpack");
-          setCoins(coins - 8);
-          setMsg("Você comprou um Jetpack!");
-        } else if (type === "vida" && coins >= 5) {
-          setLives(lives + 1);
-          setCoins(coins - 5);
-          setMsg("Você ganhou +1 vida!");
-        } else {
-          setMsg("Você não tem moedas suficientes ou já possui este item.");
+    // --- Fases ---
+    const levels = [
+      // Fase 1: tutorial
+      {
+        map: [
+          "................................",
+          "................................",
+          ".............C.................E",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          "#########L#######~~~~~#######B##"
+        ],
+        msg: "Pegue a moeda, suba a escada, evite a água e derrote o chefão!",
+        boss: true
+      },
+      // Fase 2: mais armadilhas e tuneis
+      {
+        map: [
+          "................................",
+          "................................",
+          ".............C.................E",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          "#######L#######~^~#######B#####"
+        ],
+        msg: "Cuidado com as armadilhas e tuneis! Derrote o chefão!",
+        boss: true
+      }
+    ];
+
+    // --- Estado do jogo ---
+    let state = {
+      level: 0,
+      lives: 3,
+      coins: 0,
+      msg: "",
+      won: false,
+      lost: false
+    };
+
+    // --- Objetos do jogo ---
+    let player, enemies, boss, coins, ladders, blocks, waters, traps;
+
+    // --- Inicialização ---
+    function startLevel(n) {
+      state.level = n;
+      state.msg = levels[n].msg;
+      state.won = false;
+      state.lost = false;
+      // Parse mapa
+      blocks = [], ladders = [], waters = [], traps = [], coins = [], enemies = [];
+      boss = null;
+      const map = levels[n].map;
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          const c = map[y][x];
+          const px = x * BLOCK, py = y * BLOCK;
+          if (c === "#") blocks.push({x: px, y: py});
+          if (c === "L") ladders.push({x: px, y: py});
+          if (c === "~") waters.push({x: px, y: py});
+          if (c === "^") traps.push({x: px, y: py});
+          if (c === "C") coins.push({x: px + BLOCK/2, y: py + BLOCK/2, taken: false});
+          if (c === "E") enemies.push({x: px, y: py, dir: 1, alive: true, patrol: [px-40, px+80]});
+          if (c === "B") boss = {x: px, y: py, hp: 5, alive: true};
         }
       }
-
-      function nextLevel() {
-        setLevel(level + 1);
-        setEnemyType((level + 1) % 2 === 0 ? "Drone" : "Zumbi");
-        setMsg("Novo chefe: " + ((level + 1) % 2 === 0 ? "Drone" : "Zumbi"));
-        setShowShop(false);
-      }
-
-      function pegarMoeda() {
-        setCoins(coins + 1);
-        setMsg("Você pegou uma moeda!");
-      }
-
-      function usarEspecial() {
-        if (specialReady) {
-          setDogActive(true);
-          setSpecialReady(false);
-          setMsg("Cachorro de ataque lançado!");
-          setTimeout(() => {
-            setDogActive(false);
-            setTimeout(() => setSpecialReady(true), 5000);
-          }, 2000);
-        } else {
-          setMsg("Especial recarregando...");
-        }
-      }
-
-      // Reset mensagem após 2 segundos
-      React.useEffect(() => {
-        if (msg) {
-          const timer = setTimeout(() => setMsg(""), 2000);
-          return () => clearTimeout(timer);
-        }
-      }, [msg]);
-
-      return (
-        <div className="p-4">
-          <div className="flex flex-row gap-4 items-center justify-center mb-2">
-            <div className="bg-gray-900 rounded-lg p-4 shadow-lg w-full max-w-md">
-              <div className="flex flex-row justify-between mb-2 text-sm md:text-base">
-                <span>Vidas: <b>{lives}</b></span>
-                <span>Moedas: <b>{coins}</b></span>
-                <span>Nível: <b>{level}</b></span>
-              </div>
-              <div className="flex flex-row justify-between mb-2 text-sm md:text-base">
-                <span>Arma: <b>{weapon}</b></span>
-                <span>Apetrecho: <b>{item}</b></span>
-                <span>Especial: <b>{specialReady ? "Pronto" : "Recarregando"}</b></span>
-              </div>
-              <div className="flex flex-row justify-between mb-2">
-                <span>Inimigo: <b>{enemyType}</b></span>
-                <button className="bg-yellow-400 px-2 py-1 rounded shadow hover:bg-yellow-300 transition" onClick={pegarMoeda}>Pegar Moeda</button>
-                <button className="bg-green-400 px-2 py-1 rounded shadow hover:bg-green-300 transition" onClick={() => setShowShop(true)}>Loja</button>
-              </div>
-              <div className="flex flex-row justify-between mb-2">
-                <button className="bg-blue-400 px-2 py-1 rounded shadow hover:bg-blue-300 transition" onClick={usarEspecial}>Usar Especial (Cachorro)</button>
-                <button className="bg-purple-400 px-2 py-1 rounded shadow hover:bg-purple-300 transition" onClick={nextLevel}>Próximo Nível</button>
-              </div>
-              {msg && <div className="mt-2 text-yellow-200 text-center">{msg}</div>}
-            </div>
-          </div>
-          <div className="flex flex-row justify-center items-end h-64 relative">
-            {/* Plataforma */}
-            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-gray-700 to-gray-500 rounded-t-lg shadow-lg"></div>
-            {/* Player */}
-            <div className="absolute left-1/4 bottom-8 flex flex-col items-center">
-              <div className="w-10 h-16 bg-gradient-to-b from-yellow-200 to-yellow-500 rounded-lg border-2 border-yellow-700 flex items-end justify-center relative shadow-lg">
-                {/* Jetpack */}
-                {item === "Jetpack" && (
-                  <div className="absolute left-0 bottom-0 w-2 h-6 bg-pink-500 rounded"></div>
-                )}
-                {/* Arma */}
-                <div className="absolute right-0 top-8 w-4 h-2 bg-gray-800 rounded"></div>
-              </div>
-              <span className="text-xs text-white mt-1">Você</span>
-            </div>
-            {/* Inimigo */}
-            <div className="absolute left-2/3 bottom-8 flex flex-col items-center">
-              <div className={`w-10 h-16 ${enemyType === "Drone" ? "bg-gradient-to-b from-blue-300 to-blue-700" : "bg-gradient-to-b from-red-300 to-red-700"} rounded-lg border-2 border-gray-700 flex items-end justify-center relative shadow-lg`}>
-                {enemyType === "Drone" && (
-                  <div className="absolute left-1 top-2 w-8 h-2 bg-gray-300 rounded-full"></div>
-                )}
-              </div>
-              <span className="text-xs text-white mt-1">{enemyType}</span>
-            </div>
-            {/* Cachorro especial */}
-            {dogActive && (
-              <div className="absolute left-1/2 bottom-8 flex flex-col items-center animate-bounce">
-                <div className="w-12 h-8 bg-gradient-to-r from-yellow-700 to-yellow-300 rounded-full border-2 border-yellow-900 flex items-center justify-center shadow-lg">
-                  <div className="w-3 h-3 bg-black rounded-full mr-1"></div>
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                </div>
-                <span className="text-xs text-white mt-1">Cachorro</span>
-              </div>
-            )}
-          </div>
-          {/* Loja */}
-          {showShop && (
-            <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50">
-              <div className="bg-gray-900 rounded-lg p-8 shadow-2xl w-96">
-                <h2 className="text-xl text-yellow-300 mb-4">Loja do Jogo</h2>
-                <div className="flex flex-col gap-2">
-                  <button className="bg-blue-500 px-4 py-2 rounded text-white hover:bg-blue-400 transition" onClick={() => buy("arma")}>Comprar Metralhadora (10 moedas)</button>
-                  <button className="bg-pink-500 px-4 py-2 rounded text-white hover:bg-pink-400 transition" onClick={() => buy("jetpack")}>Comprar Jetpack (8 moedas)</button>
-                  <button className="bg-green-500 px-4 py-2 rounded text-white hover:bg-green-400 transition" onClick={() => buy("vida")}>Comprar Vida (5 moedas)</button>
-                  <button className="bg-gray-700 px-4 py-2 rounded text-white hover:bg-gray-600 transition" onClick={() => setShowShop(false)}>Fechar Loja</button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
+      // Player
+      player = {
+        x: BLOCK, y: H - 2*BLOCK - PLAYER_H, vx: 0, vy: 0, onGround: false, onLadder: false, climbing: false,
+        facing: 1, attacking: false, attackT: 0, animT: 0
+      };
     }
-    ReactDOM.render(<App />, document.getElementById('root'));
+
+    // --- Colisão ---
+    function rectsCollide(a, b, aw, ah, bw, bh) {
+      return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y;
+    }
+
+    // --- Física e lógica ---
+    function update() {
+      if (state.won || state.lost) return;
+
+      // Movimento horizontal
+      if (keys.left) { player.vx = -SPEED; player.facing = -1; }
+      else if (keys.right) { player.vx = SPEED; player.facing = 1; }
+      else player.vx = 0;
+
+      // Escada
+      player.onLadder = ladders.some(lad => rectsCollide(player, lad, PLAYER_W, PLAYER_H, BLOCK, BLOCK));
+      if (player.onLadder && (keys.up || keys.down)) {
+        player.climbing = true;
+        player.vy = keys.up ? -LADDER_SPEED : keys.down ? LADDER_SPEED : 0;
+      } else if (player.climbing && !player.onLadder) {
+        player.climbing = false;
+      }
+
+      // Pulo
+      if (keys.jump && player.onGround && !player.climbing) {
+        player.vy = JUMP;
+        player.onGround = false;
+      }
+
+      // Gravidade
+      if (!player.climbing) player.vy += GRAVITY;
+      else player.vy = 0;
+
+      // Movimento
+      player.x += player.vx;
+      player.y += player.vy;
+
+      // Limites do cenário
+      if (player.x < 0) player.x = 0;
+      if (player.x > W - PLAYER_W) player.x = W - PLAYER_W;
+      if (player.y > H - PLAYER_H) {
+        player.y = H - PLAYER_H;
+        player.vy = 0;
+        player.onGround = true;
+      }
+
+      // Colisão com blocos
+      player.onGround = false;
+      for (let b of blocks) {
+        if (rectsCollide(player, b, PLAYER_W, PLAYER_H, BLOCK, BLOCK)) {
+          // De cima
+          if (player.vy > 0 && player.y + PLAYER_H - player.vy <= b.y) {
+            player.y = b.y - PLAYER_H;
+            player.vy = 0;
+            player.onGround = true;
+          }
+          // De baixo
+          else if (player.vy < 0 && player.y - player.vy >= b.y + BLOCK) {
+            player.y = b.y + BLOCK;
+            player.vy = 0;
+          }
+          // Lados
+          else if (player.x + PLAYER_W - player.vx <= b.x) {
+            player.x = b.x - PLAYER_W;
+          } else if (player.x - player.vx >= b.x + BLOCK) {
+            player.x = b.x + BLOCK;
+          }
+        }
+      }
+
+      // Água
+      let inWater = waters.some(w => rectsCollide(player, w, PLAYER_W, PLAYER_H, BLOCK, BLOCK));
+      if (inWater) {
+        player.vy *= 0.7;
+        if (player.onGround) state.msg = "Você está na água! Saia rápido!";
+      }
+
+      // Armadilhas
+      if (traps.some(t => rectsCollide(player, t, PLAYER_W, PLAYER_H, BLOCK, BLOCK))) {
+        state.lives--;
+        state.msg = "Você caiu numa armadilha!";
+        if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
+        else startLevel(state.level);
+        return;
+      }
+
+      // Moedas
+      for (let c of coins) {
+        if (!c.taken && Math.abs(player.x + PLAYER_W/2 - c.x) < 24 && Math.abs(player.y + PLAYER_H/2 - c.y) < 24) {
+          c.taken = true;
+          state.coins++;
+          state.msg = "Moeda coletada!";
+        }
+      }
+
+      // Inimigos
+      for (let e of enemies) {
+        if (!e.alive) continue;
+        // Movimento patrulha
+        e.x += e.dir * 1.2;
+        if (e.x < e.patrol[0] || e.x > e.patrol[1]) e.dir *= -1;
+        // Colisão com player
+        if (rectsCollide(player, e, PLAYER_W, PLAYER_H, BLOCK, BLOCK)) {
+          state.lives--;
+          state.msg = "Você foi atingido por um inimigo!";
+          if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
+          else startLevel(state.level);
+          return;
+        }
+      }
+
+      // Boss
+      if (boss && boss.alive) {
+        // Ataque boss
+        if (Math.abs(player.x - boss.x) < 60 && Math.abs(player.y - boss.y) < 60) {
+          state.lives--;
+          state.msg = "O chefão te acertou!";
+          if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
+          else startLevel(state.level);
+          return;
+        }
+        // Atacar boss
+        if (player.attacking && Math.abs(player.x - boss.x) < 60 && Math.abs(player.y - boss.y) < 60) {
+          boss.hp--;
+          state.msg = "Você acertou o chefão!";
+          if (boss.hp <= 0) {
+            boss.alive = false;
+            state.msg = "Chefão derrotado!";
+            setTimeout(() => {
+              if (state.level < levels.length - 1) {
+                startLevel(state.level + 1);
+                state.msg = "Fase seguinte!";
+              } else {
+                state.won = true;
+                state.msg = "Parabéns! Você zerou!";
+              }
+            }, 1200);
+          }
+        }
+      }
+
+      // Ataque player
+      if (player.attacking) player.attackT--;
+      if (player.attackT <= 0) player.attacking = false;
+
+      // Animação
+      player.animT++;
+    }
+
+    // --- Renderização ---
+    function draw() {
+      // Fundo
+      ctx.fillStyle = COLORS.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Blocos
+      for (let b of blocks) {
+        ctx.fillStyle = COLORS.block;
+        ctx.fillRect(b.x, b.y, BLOCK, BLOCK);
+        ctx.strokeStyle = "#334155";
+        ctx.strokeRect(b.x, b.y, BLOCK, BLOCK);
+      }
+      // Escadas
+      for (let l of ladders) {
+        ctx.fillStyle = COLORS.ladder;
+        ctx.fillRect(l.x + 12, l.y, 16, BLOCK);
+        ctx.strokeStyle = "#fff";
+        ctx.beginPath();
+        ctx.moveTo(l.x + 20, l.y); ctx.lineTo(l.x + 20, l.y + BLOCK);
+        ctx.stroke();
+      }
+      // Água
+      for (let w of waters) {
+        ctx.fillStyle = COLORS.water;
+        ctx.fillRect(w.x, w.y, BLOCK, BLOCK);
+      }
+      // Armadilhas
+      for (let t of traps) {
+        ctx.fillStyle = COLORS.trap;
+        ctx.beginPath();
+        ctx.moveTo(t.x, t.y + BLOCK);
+        ctx.lineTo(t.x + BLOCK/2, t.y);
+        ctx.lineTo(t.x + BLOCK, t.y + BLOCK);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Moedas
+      for (let c of coins) {
+        if (!c.taken) {
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, 12, 0, 2 * Math.PI);
+          ctx.fillStyle = COLORS.coin;
+          ctx.fill();
+          ctx.strokeStyle = "#b45309";
+          ctx.stroke();
+        }
+      }
+      // Inimigos
+      for (let e of enemies) {
+        if (!e.alive) continue;
+        drawStickman(e.x + 6, e.y + BLOCK - 2, "enemy");
+      }
+      // Boss
+      if (boss && boss.alive) {
+        drawStickman(boss.x + 10, boss.y + BLOCK - 2, "boss", boss.hp);
+      }
+      // Player
+      drawStickman(player.x + PLAYER_W/2, player.y + PLAYER_H, "player", 0, player.facing, player.attacking, player.animT);
+
+      // HUD
+      document.getElementById('hud-lives').textContent = "❤️ " + state.lives;
+      document.getElementById('hud-coins').textContent = "🪙 " + state.coins;
+      document.getElementById('hud-level').textContent = "Fase " + (state.level + 1);
+      document.getElementById('msg').textContent = state.msg || "";
+    }
+
+    // --- Desenhar boneco realista (stickman cartoon) ---
+    function drawStickman(x, y, type, hp = 0, facing = 1, attacking = false, animT = 0) {
+      ctx.save();
+      ctx.translate(x, y);
+      // Corpo
+      ctx.strokeStyle = COLORS[type];
+      ctx.lineWidth = 5;
+      // Pernas
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-8, 24 + Math.sin(animT/4)*2);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(8, 24 + Math.cos(animT/4)*2);
+      ctx.stroke();
+      // Tronco
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -28);
+      ctx.stroke();
+      // Braços
+      ctx.strokeStyle = COLORS.arm;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0, -18);
+      ctx.lineTo(-14 * facing, -18 + Math.sin(animT/6)*6);
+      ctx.moveTo(0, -18);
+      ctx.lineTo(14 * facing, -18 + Math.cos(animT/6)*6);
+      ctx.stroke();
+      // Ataque
+      if (attacking) {
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(0, -18);
+        ctx.lineTo(24 * facing, -18);
+        ctx.stroke();
+      }
+      // Cabeça
+      ctx.beginPath();
+      ctx.arc(0, -36, 10, 0, 2 * Math.PI);
+      ctx.fillStyle = COLORS[type];
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.stroke();
+      // HP boss
+      if (type === "boss" && hp > 0) {
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 12px Arial";
+        ctx.fillText("HP: " + hp, -18, -48);
+      }
+      ctx.restore();
+    }
+
+    // --- Input ---
+    const keys = {left: false, right: false, up: false, down: false, jump: false, attack: false};
+    document.addEventListener('keydown', e => {
+      if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = true;
+      if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = true;
+      if (e.code === "ArrowUp" || e.code === "KeyW") keys.up = true;
+      if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = true;
+      if (e.code === "Space") {
+        if (!player.attacking) {
+          player.attacking = true;
+          player.attackT = 15;
+        }
+      }
+      if (e.code === "KeyR" && (state.lost || state.won)) {
+        state.lives = 3; state.coins = 0; startLevel(0);
+      }
+    });
+    document.addEventListener('keyup', e => {
+      if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = false;
+      if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = false;
+      if (e.code === "ArrowUp" || e.code === "KeyW") keys.up = false;
+      if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = false;
+    });
+
+    // --- Loop principal ---
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // --- Iniciar ---
+    startLevel(0);
+    loop();
   </script>
 </body>
 </html>
