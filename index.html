@@ -72,24 +72,20 @@
   </div>
   <p>Setas: mover | A: pular</p>
   <script>
-    // --- Sprites (imagens reais com fallback) ---
+    // --- Sprites (usando base64 para evitar falhas de carregamento) ---
     const tileSize = 32;
     const playerSprite = new Image();
-    playerSprite.src = "https://opengameart.org/sites/default/files/hero_0.png";
     const enemySprite = new Image();
-    enemySprite.src = "https://opengameart.org/sites/default/files/robot_0.png";
     const coinSprite = new Image();
-    coinSprite.src = "https://opengameart.org/sites/default/files/coin_gold.png";
 
-    // Fallback caso as imagens não carreguem
-    playerSprite.onerror = () => { playerSprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABYSURBVFhH7dNBCgAgCETR/v8v9iWjB0yTQKAAiA+AAwDHk5W1jW3bYbPZbDYbzX8B/ZW1jW3btm3btm3btm3btm3btu3btm3btm3btm3btm3btm3btu3btm3b9g1sM0eN7mUAAAAASUVORK5CYII='; };
-    enemySprite.onerror = () => { enemySprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABYSURBVFhH7dNBDcAwAASw/P8/2ZcAHRiAAiA+AA4AHG9W1ja2bYe1bYfNZrPZrDYbzX8B/ZW1jW3btm3btm3btm3btm3btu3btm3btm3btm3btm3btm3btu3btm3b9g1sM0eN7mUAAAAASUVORK5CYII='; };
-    coinSprite.onerror = () => { coinSprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABYSURBVDhPY2AYBaNgFAMDA4MhDIyMjAyMGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY5QAC0y5jGAAAAAElFTkSuQmCC'; };
+    // Imagens base64 como fallback (simples quadrados coloridos para teste)
+    playerSprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABYSURBVFhH7dNBCgAgCETR/v8v9iWjB0yTQKAAiA+AAwDHk5W1jW3bYbPZbDYbzX8B/ZW1jW3btm3btm3btm3btm3btu3btm3btm3btm3btm3btm3btu3btm3b9g1sM0eN7mUAAAAASUVORK5CYII=';
+    enemySprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABYSURBVFhH7dNBDcAwAASw/P8/2ZcAHRiAAiA+AA4AHG9W1ja2bYe1bYfNZrPZrDYbzX8B/ZW1jW3btm3btm3btm3btm3btu3btm3btm3btm3btm3btm3btu3btm3b9g1sM0eN7mUAAAAASUVORK5CYII=';
+    coinSprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABYSURBVDhPY2AYBaNgFAMDA4MhDIyMjAyMGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY5QAC0y5jGAAAAAElFTkSuQmCC';
 
     // --- Mapas (0: vazio, 1: chão, 2: água, 3: espinho, 4: moeda, 5: inimigo) ---
     const maps = [
       [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0],
@@ -98,12 +94,13 @@
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
       ],
       [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -117,7 +114,7 @@
     // --- Estado do jogo ---
     let level = 0, lives = 3, coins = 0;
     let player = { x: 2, y: 7, vx: 0, vy: 0, onGround: false, w: 28, h: 32 };
-    let enemies = [{ x: 10, y: 8, dir: 1, w: 28, h: 32 }];
+    let enemies = [];
     let keys = {};
     let gameOver = false;
 
@@ -130,7 +127,7 @@
     document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
     document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-    // --- Função para contar moedas restantes ---
+    // --- Funções auxiliares ---
     function countCoins() {
       let coinCount = 0;
       for (let y = 0; y < 10; y++) {
@@ -141,20 +138,18 @@
       return coinCount;
     }
 
-    // --- Função para carregar inimigos da fase ---
     function loadEnemies() {
       enemies = [];
       for (let y = 0; y < 10; y++) {
         for (let x = 0; x < 20; x++) {
           if (maps[level][y][x] === 5) {
             enemies.push({ x, y, dir: 1, w: 28, h: 32 });
-            maps[level][y][x] = 0; // Remove o inimigo do mapa
+            maps[level][y][x] = 0;
           }
         }
       }
     }
 
-    // --- Função para reiniciar o jogo ---
     function restartGame() {
       level = 0;
       lives = 3;
@@ -163,9 +158,7 @@
       gameOver = false;
       gameOverScreen.style.display = 'none';
       canvas.style.display = 'block';
-      // Recarregar mapas para restaurar moedas e inimigos
       maps[0] = [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0],
@@ -174,12 +167,13 @@
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
       ];
       maps[1] = [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -189,6 +183,7 @@
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
       ];
       loadEnemies();
+      loop();
     }
 
     // --- Loop ---
@@ -218,20 +213,24 @@
           let t = maps[level][y][x];
           if (t === 1 || t === 2 || t === 3) {
             let tx = x, ty = y;
-            if (nx * tileSize + player.w > tx * tileSize && nx * tileSize < (tx + 1) * tileSize &&
-                ny * tileSize + player.h > ty * tileSize && ny * tileSize < (ty + 1) * tileSize) {
-              if (player.vy > 0 && ny > ty) {
+            let px = nx * tileSize, py = ny * tileSize;
+            let tw = tileSize, th = tileSize;
+            if (px + player.w > tx * tw && px < (tx + 1) * tw &&
+                py + player.h > ty * th && py < (ty + 1) * th) {
+              if (player.vy > 0 && py + player.h > ty * th) {
                 ny = ty - player.h / tileSize;
                 player.vy = 0;
                 player.onGround = true;
-              } else if (player.vy < 0 && ny < ty) {
+              } else if (player.vy < 0 && py < ty * th) {
                 ny = ty + 1;
                 player.vy = 0;
               }
-              if (player.vx > 0 && nx > tx) {
+              if (player.vx > 0 && px + player.w > tx * tw) {
                 nx = tx - player.w / tileSize;
-              } else if (player.vx < 0 && nx < tx) {
+                player.vx = 0;
+              } else if (player.vx < 0 && px < (tx + 1) * tw) {
                 nx = tx + 1;
+                player.vx = 0;
               }
               if (t === 2) player.vx *= 0.7; // água
               if (t === 3) {
@@ -292,7 +291,6 @@
       enemies.forEach(enemy => {
         enemy.x += 0.03 * enemy.dir;
         if (enemy.x < 1 || enemy.x > 18) enemy.dir *= -1;
-        // Colisão player-inimigo
         if (Math.abs(player.x - enemy.x) < 0.7 && Math.abs(player.y - enemy.y) < 0.7) {
           player.x = 2;
           player.y = 7;
@@ -316,6 +314,7 @@
     }
 
     function draw() {
+      console.log("Desenhando quadro...");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       // Tiles
       for (let y = 0; y < 10; y++) {
@@ -354,14 +353,17 @@
     }
 
     function loop() {
-      update();
-      draw();
-      requestAnimationFrame(loop);
+      if (!gameOver) {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
     }
 
     // --- Iniciar ---
+    console.log("Iniciando o jogo...");
     loadEnemies();
-    playerSprite.onload = () => loop();
+    loop();
   </script>
 </body>
 </html>
