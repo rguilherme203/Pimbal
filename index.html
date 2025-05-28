@@ -8,6 +8,9 @@
   <style>
     canvas { background: #1e293b; display: block; margin: 0 auto; border-radius: 16px; box-shadow: 0 8px 32px #000a; }
     .hud { font-family: Arial, sans-serif; }
+    .mobile-controls { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 50; display: flex; gap: 12px; }
+    .mobile-controls button { width: 56px; height: 56px; border-radius: 50%; background: #334155; color: #fff; font-size: 2rem; border: none; box-shadow: 0 2px 8px #0005; }
+    @media (min-width: 900px) { .mobile-controls { display: none; } }
   </style>
 </head>
 <body class="bg-gradient-to-b from-blue-900 to-gray-900 min-h-screen flex flex-col items-center">
@@ -20,6 +23,13 @@
   <canvas id="game" width="800" height="480"></canvas>
   <div class="text-white mt-2 text-sm">Controles: ← → ou A/D para andar, ↑ ou W para pular, ↓ ou S para descer escada, Espaço para atacar</div>
   <div id="msg" class="text-yellow-200 text-lg mt-2"></div>
+  <div class="mobile-controls">
+    <button id="btn-left">⟵</button>
+    <button id="btn-up">⤒</button>
+    <button id="btn-down">⤓</button>
+    <button id="btn-right">⟶</button>
+    <button id="btn-attack">⚔️</button>
+  </div>
   <script type="text/javascript">
     // --- Configurações ---
     const canvas = document.getElementById('game');
@@ -27,6 +37,7 @@
     const W = canvas.width, H = canvas.height;
     const GRAVITY = 0.7, JUMP = -13, SPEED = 4, LADDER_SPEED = 2.5;
     const BLOCK = 40, PLAYER_W = 28, PLAYER_H = 48;
+    const CAMERA_MARGIN_X = 200, CAMERA_MARGIN_Y = 120;
     const COLORS = {
       bg: "#1e293b", block: "#64748b", ladder: "#fbbf24", water: "#38bdf8", trap: "#ef4444",
       coin: "#fde047", enemy: "#f87171", boss: "#a21caf", player: "#facc15", arm: "#fbbf24", leg: "#fbbf24"
@@ -34,7 +45,7 @@
 
     // --- Fases ---
     const levels = [
-      // Fase 1: tutorial
+      // Fase 1: tutorial vertical
       {
         map: [
           "................................",
@@ -56,9 +67,29 @@
           ".............#.................#",
           ".............#.................#",
           ".............#.................#",
+          "#########L#######~~~~~#######B##",
+          "................................",
+          ".............C.................E",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
           "#########L#######~~~~~#######B##"
         ],
-        msg: "Pegue a moeda, suba a escada, evite a água e derrote o chefão!",
+        msg: "Pegue as moedas, suba as escadas, evite a água e derrote o chefão!",
         boss: true
       },
       // Fase 2: mais armadilhas e tuneis
@@ -83,7 +114,26 @@
           ".............#.................#",
           ".............#.................#",
           ".............#.................#",
-          "#######L#######~^~#######B#####"
+          "#######L#######~^~#######B#####",
+          "................................",
+          ".............C.................E",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          ".............#.................#",
+          "#########L#######~~~~~#######B##"
         ],
         msg: "Cuidado com as armadilhas e tuneis! Derrote o chefão!",
         boss: true
@@ -102,6 +152,7 @@
 
     // --- Objetos do jogo ---
     let player, enemies, boss, coins, ladders, blocks, waters, traps;
+    let camera = {x: 0, y: 0};
 
     // --- Inicialização ---
     function startLevel(n) {
@@ -120,17 +171,18 @@
           if (c === "#") blocks.push({x: px, y: py});
           if (c === "L") ladders.push({x: px, y: py});
           if (c === "~") waters.push({x: px, y: py});
-          if (c === "^") traps.push({x: px, y: py});
-          if (c === "C") coins.push({x: px + BLOCK/2, y: py + BLOCK/2, taken: false});
-          if (c === "E") enemies.push({x: px, y: py, dir: 1, alive: true, patrol: [px-40, px+80]});
-          if (c === "B") boss = {x: px, y: py, hp: 5, alive: true};
+          if (c === "^") traps.push({x: px, y: py, anim: 0});
+          if (c === "C") coins.push({x: px + BLOCK/2, y: py + BLOCK/2, taken: false, anim: 0});
+          if (c === "E") enemies.push({x: px, y: py, dir: 1, alive: true, patrol: [px-40, px+80], ai: 0});
+          if (c === "B") boss = {x: px, y: py, hp: 5, alive: true, attackT: 0, proj: []};
         }
       }
       // Player
       player = {
-        x: BLOCK, y: H - 2*BLOCK - PLAYER_H, vx: 0, vy: 0, onGround: false, onLadder: false, climbing: false,
-        facing: 1, attacking: false, attackT: 0, animT: 0
+        x: BLOCK, y: (map.length-3)*BLOCK - PLAYER_H, vx: 0, vy: 0, onGround: false, onLadder: false, climbing: false,
+        facing: 1, attacking: false, attackT: 0, animT: 0, canJump: true
       };
+      camera = {x: 0, y: Math.max(0, player.y - H/2)};
     }
 
     // --- Colisão ---
@@ -156,11 +208,13 @@
         player.climbing = false;
       }
 
-      // Pulo
-      if (keys.jump && player.onGround && !player.climbing) {
+      // Pulo (coyote time)
+      if (keys.jump && player.canJump && (player.onGround || player.climbing)) {
         player.vy = JUMP;
         player.onGround = false;
+        player.canJump = false;
       }
+      if (!keys.jump) player.canJump = true;
 
       // Gravidade
       if (!player.climbing) player.vy += GRAVITY;
@@ -172,9 +226,9 @@
 
       // Limites do cenário
       if (player.x < 0) player.x = 0;
-      if (player.x > W - PLAYER_W) player.x = W - PLAYER_W;
-      if (player.y > H - PLAYER_H) {
-        player.y = H - PLAYER_H;
+      if (player.x > levels[state.level].map[0].length*BLOCK - PLAYER_W) player.x = levels[state.level].map[0].length*BLOCK - PLAYER_W;
+      if (player.y > levels[state.level].map.length*BLOCK - PLAYER_H) {
+        player.y = levels[state.level].map.length*BLOCK - PLAYER_H;
         player.vy = 0;
         player.onGround = true;
       }
@@ -208,19 +262,24 @@
       if (inWater) {
         player.vy *= 0.7;
         if (player.onGround) state.msg = "Você está na água! Saia rápido!";
+        if (player.vy > 4) player.vy = 4;
       }
 
       // Armadilhas
-      if (traps.some(t => rectsCollide(player, t, PLAYER_W, PLAYER_H, BLOCK, BLOCK))) {
-        state.lives--;
-        state.msg = "Você caiu numa armadilha!";
-        if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
-        else startLevel(state.level);
-        return;
+      for (let t of traps) {
+        t.anim += 0.1;
+        if (rectsCollide(player, t, PLAYER_W, PLAYER_H, BLOCK, BLOCK)) {
+          state.lives--;
+          state.msg = "Você caiu numa armadilha!";
+          if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
+          else startLevel(state.level);
+          return;
+        }
       }
 
       // Moedas
       for (let c of coins) {
+        c.anim += 0.1;
         if (!c.taken && Math.abs(player.x + PLAYER_W/2 - c.x) < 24 && Math.abs(player.y + PLAYER_H/2 - c.y) < 24) {
           c.taken = true;
           state.coins++;
@@ -231,9 +290,15 @@
       // Inimigos
       for (let e of enemies) {
         if (!e.alive) continue;
-        // Movimento patrulha
-        e.x += e.dir * 1.2;
-        if (e.x < e.patrol[0] || e.x > e.patrol[1]) e.dir *= -1;
+        // IA: segue o player se perto
+        let dist = Math.abs(player.x - e.x);
+        if (dist < 120) {
+          e.dir = player.x < e.x ? -1 : 1;
+          e.x += e.dir * 1.5;
+        } else {
+          e.x += e.dir * 1.2;
+          if (e.x < e.patrol[0] || e.x > e.patrol[1]) e.dir *= -1;
+        }
         // Colisão com player
         if (rectsCollide(player, e, PLAYER_W, PLAYER_H, BLOCK, BLOCK)) {
           state.lives--;
@@ -246,14 +311,24 @@
 
       // Boss
       if (boss && boss.alive) {
-        // Ataque boss
-        if (Math.abs(player.x - boss.x) < 60 && Math.abs(player.y - boss.y) < 60) {
-          state.lives--;
-          state.msg = "O chefão te acertou!";
-          if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
-          else startLevel(state.level);
-          return;
+        // Ataque boss: lança projétil
+        boss.attackT--;
+        if (boss.attackT <= 0) {
+          boss.proj.push({x: boss.x+20, y: boss.y+20, vx: (player.x-boss.x)/60, vy: (player.y-boss.y)/60});
+          boss.attackT = 90 + Math.random()*60;
         }
+        // Projéteis
+        for (let p of boss.proj) {
+          p.x += p.vx*6; p.y += p.vy*6;
+          if (rectsCollide(player, p, PLAYER_W, PLAYER_H, 12, 12)) {
+            state.lives--;
+            state.msg = "O chefão te acertou!";
+            if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
+            else startLevel(state.level);
+            return;
+          }
+        }
+        boss.proj = boss.proj.filter(p => p.x > 0 && p.x < levels[state.level].map[0].length*BLOCK && p.y > 0 && p.y < levels[state.level].map.length*BLOCK);
         // Atacar boss
         if (player.attacking && Math.abs(player.x - boss.x) < 60 && Math.abs(player.y - boss.y) < 60) {
           boss.hp--;
@@ -280,6 +355,10 @@
 
       // Animação
       player.animT++;
+
+      // Câmera segue player
+      camera.x = Math.max(0, Math.min(player.x - W/2 + PLAYER_W/2, levels[state.level].map[0].length*BLOCK - W));
+      camera.y = Math.max(0, Math.min(player.y - H/2 + PLAYER_H/2, levels[state.level].map.length*BLOCK - H));
     }
 
     // --- Renderização ---
@@ -291,56 +370,73 @@
       // Blocos
       for (let b of blocks) {
         ctx.fillStyle = COLORS.block;
-        ctx.fillRect(b.x, b.y, BLOCK, BLOCK);
+        ctx.fillRect(b.x - camera.x, b.y - camera.y, BLOCK, BLOCK);
         ctx.strokeStyle = "#334155";
-        ctx.strokeRect(b.x, b.y, BLOCK, BLOCK);
+        ctx.strokeRect(b.x - camera.x, b.y - camera.y, BLOCK, BLOCK);
       }
       // Escadas
       for (let l of ladders) {
         ctx.fillStyle = COLORS.ladder;
-        ctx.fillRect(l.x + 12, l.y, 16, BLOCK);
+        ctx.fillRect(l.x + 12 - camera.x, l.y - camera.y, 16, BLOCK);
         ctx.strokeStyle = "#fff";
         ctx.beginPath();
-        ctx.moveTo(l.x + 20, l.y); ctx.lineTo(l.x + 20, l.y + BLOCK);
+        ctx.moveTo(l.x + 20 - camera.x, l.y - camera.y); ctx.lineTo(l.x + 20 - camera.x, l.y + BLOCK - camera.y);
         ctx.stroke();
       }
       // Água
       for (let w of waters) {
         ctx.fillStyle = COLORS.water;
-        ctx.fillRect(w.x, w.y, BLOCK, BLOCK);
+        ctx.fillRect(w.x - camera.x, w.y - camera.y, BLOCK, BLOCK);
       }
       // Armadilhas
       for (let t of traps) {
+        ctx.save();
+        ctx.translate(t.x - camera.x, t.y - camera.y);
+        ctx.rotate(Math.sin(t.anim)*0.2);
         ctx.fillStyle = COLORS.trap;
         ctx.beginPath();
-        ctx.moveTo(t.x, t.y + BLOCK);
-        ctx.lineTo(t.x + BLOCK/2, t.y);
-        ctx.lineTo(t.x + BLOCK, t.y + BLOCK);
+        ctx.moveTo(0, BLOCK);
+        ctx.lineTo(BLOCK/2, 0);
+        ctx.lineTo(BLOCK, BLOCK);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
       }
       // Moedas
       for (let c of coins) {
         if (!c.taken) {
+          ctx.save();
+          ctx.translate(c.x - camera.x, c.y - camera.y - Math.sin(c.anim)*6);
+          ctx.rotate(Math.sin(c.anim)*0.2);
           ctx.beginPath();
-          ctx.arc(c.x, c.y, 12, 0, 2 * Math.PI);
+          ctx.arc(0, 0, 12, 0, 2 * Math.PI);
           ctx.fillStyle = COLORS.coin;
           ctx.fill();
           ctx.strokeStyle = "#b45309";
           ctx.stroke();
+          ctx.restore();
         }
       }
       // Inimigos
       for (let e of enemies) {
         if (!e.alive) continue;
-        drawStickman(e.x + 6, e.y + BLOCK - 2, "enemy");
+        drawStickman(e.x + 6 - camera.x, e.y + BLOCK - 2 - camera.y, "enemy");
       }
       // Boss
       if (boss && boss.alive) {
-        drawStickman(boss.x + 10, boss.y + BLOCK - 2, "boss", boss.hp);
+        drawStickman(boss.x + 10 - camera.x, boss.y + BLOCK - 2 - camera.y, "boss", boss.hp);
+        // Projéteis
+        for (let p of boss.proj) {
+          ctx.beginPath();
+          ctx.arc(p.x - camera.x, p.y - camera.y, 12, 0, 2 * Math.PI);
+          ctx.fillStyle = "#a21caf";
+          ctx.fill();
+          ctx.strokeStyle = "#fff";
+          ctx.stroke();
+        }
       }
       // Player
-      drawStickman(player.x + PLAYER_W/2, player.y + PLAYER_H, "player", 0, player.facing, player.attacking, player.animT);
+      drawStickman(player.x + PLAYER_W/2 - camera.x, player.y + PLAYER_H - camera.y, "player", 0, player.facing, player.attacking, player.animT);
 
       // HUD
       document.getElementById('hud-lives').textContent = "❤️ " + state.lives;
@@ -418,13 +514,35 @@
       if (e.code === "KeyR" && (state.lost || state.won)) {
         state.lives = 3; state.coins = 0; startLevel(0);
       }
+      if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") keys.jump = true;
     });
     document.addEventListener('keyup', e => {
       if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = false;
       if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = false;
       if (e.code === "ArrowUp" || e.code === "KeyW") keys.up = false;
       if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = false;
+      if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") keys.jump = false;
     });
+
+    // --- Controles mobile ---
+    function mobileBtn(id, on, off) {
+      const btn = document.getElementById(id);
+      btn.addEventListener('touchstart', e => { e.preventDefault(); on(); });
+      btn.addEventListener('touchend', e => { e.preventDefault(); off(); });
+      btn.addEventListener('mousedown', e => { e.preventDefault(); on(); });
+      btn.addEventListener('mouseup', e => { e.preventDefault(); off(); });
+      btn.addEventListener('mouseleave', e => { e.preventDefault(); off(); });
+    }
+    mobileBtn('btn-left', ()=>{keys.left=true;}, ()=>{keys.left=false;});
+    mobileBtn('btn-right', ()=>{keys.right=true;}, ()=>{keys.right=false;});
+    mobileBtn('btn-up', ()=>{keys.jump=true;keys.up=true;}, ()=>{keys.jump=false;keys.up=false;});
+    mobileBtn('btn-down', ()=>{keys.down=true;}, ()=>{keys.down=false;});
+    mobileBtn('btn-attack', ()=>{
+      if (!player.attacking) {
+        player.attacking = true;
+        player.attackT = 15;
+      }
+    }, ()=>{});
 
     // --- Loop principal ---
     function loop() {
