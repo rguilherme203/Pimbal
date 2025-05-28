@@ -1,369 +1,1357 @@
-<!DOCTYPE html>
+function App() {
+  const [activeTab, setActiveTab] = React.useState('preview');
+  const [showInstructions, setShowInstructions] = React.useState(true);
+  
+  // Estrutura de arquivos do projeto
+  const files = {
+    'index.html': `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <title>Plataformer Realista</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plataformer Tileset Demo</title>
-  <style>
-    body { 
-      background: #1a1a1a; 
-      color: #fff; 
-      text-align: center; 
-      font-family: Arial, sans-serif; 
-      margin: 0;
-      padding: 0;
-    }
-    #hud { 
-      margin: 10px auto; 
-      width: 640px; 
-      display: flex; 
-      justify-content: space-between; 
-      font-size: 18px;
-    }
-    canvas { 
-      background: linear-gradient(to bottom, #87ceeb, #4682b4); 
-      border: 4px solid #00ffe7; 
-      border-radius: 12px; 
-      box-shadow: 0 0 20px rgba(0, 255, 231, 0.5);
-    }
-    p { 
-      margin: 10px 0; 
-      font-size: 16px; 
-    }
-    #game-over {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.8);
-      padding: 20px;
-      border-radius: 10px;
-      display: none;
-    }
-    #game-over h2 {
-      margin: 0 0 10px;
-      color: #ff4444;
-    }
-    #game-over button {
-      padding: 10px 20px;
-      font-size: 16px;
-      background: #00ffe7;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #game-over button:hover {
-      background: #00d4c2;
-    }
-  </style>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <h1>Plataformer Tileset Demo</h1>
-  <div id="hud">
-    <span id="lives">❤️❤️❤️</span>
-    <span id="coins">Moedas: 0</span>
-    <span id="level">Fase: 1</span>
-  </div>
-  <canvas id="game" width="640" height="384"></canvas>
-  <div id="game-over">
-    <h2>Game Over!</h2>
-    <p>Você perdeu todas as suas vidas.</p>
-    <button onclick="restartGame()">Jogar Novamente</button>
-  </div>
-  <p>Setas: mover | A: pular</p>
-  <script>
-    // --- Sprites (usando base64 para evitar falhas de carregamento) ---
-    const tileSize = 32;
-    const playerSprite = new Image();
-    const enemySprite = new Image();
-    const coinSprite = new Image();
-
-    // Imagens base64 como fallback (simples quadrados coloridos para teste)
-    playerSprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABYSURBVFhH7dNBCgAgCETR/v8v9iWjB0yTQKAAiA+AAwDHk5W1jW3bYbPZbDYbzX8B/ZW1jW3btm3btm3btm3btm3btu3btm3btm3btm3btm3btm3btu3btm3b9g1sM0eN7mUAAAAASUVORK5CYII=';
-    enemySprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABYSURBVFhH7dNBDcAwAASw/P8/2ZcAHRiAAiA+AA4AHG9W1ja2bYe1bYfNZrPZrDYbzX8B/ZW1jW3btm3btm3btm3btm3btu3btm3btm3btm3btm3btm3btu3btm3b9g1sM0eN7mUAAAAASUVORK5CYII=';
-    coinSprite.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABYSURBVDhPY2AYBaNgFAMDA4MhDIyMjAyMGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY5QAC0y5jGAAAAAElFTkSuQmCC';
-
-    // --- Mapas (0: vazio, 1: chão, 2: água, 3: espinho, 4: moeda, 5: inimigo) ---
-    const maps = [
-      [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-      ],
-      [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-      ]
-    ];
-
-    // --- Estado do jogo ---
-    let level = 0, lives = 3, coins = 0;
-    let player = { x: 2, y: 7, vx: 0, vy: 0, onGround: false, w: 28, h: 32 };
-    let enemies = [];
-    let keys = {};
-    let gameOver = false;
-
-    // --- Canvas ---
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
-    const gameOverScreen = document.getElementById('game-over');
-
-    // --- Controles ---
-    document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
-    document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-
-    // --- Funções auxiliares ---
-    function countCoins() {
-      let coinCount = 0;
-      for (let y = 0; y < 10; y++) {
-        for (let x = 0; x < 20; x++) {
-          if (maps[level][y][x] === 4) coinCount++;
-        }
-      }
-      return coinCount;
-    }
-
-    function loadEnemies() {
-      enemies = [];
-      for (let y = 0; y < 10; y++) {
-        for (let x = 0; x < 20; x++) {
-          if (maps[level][y][x] === 5) {
-            enemies.push({ x, y, dir: 1, w: 28, h: 32 });
-            maps[level][y][x] = 0;
-          }
-        }
-      }
-    }
-
-    function restartGame() {
-      level = 0;
-      lives = 3;
-      coins = 0;
-      player = { x: 2, y: 7, vx: 0, vy: 0, onGround: false, w: 28, h: 32 };
-      gameOver = false;
-      gameOverScreen.style.display = 'none';
-      canvas.style.display = 'block';
-      maps[0] = [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-      ];
-      maps[1] = [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-      ];
-      loadEnemies();
-      loop();
-    }
-
-    // --- Loop ---
-    function update() {
-      if (gameOver) return;
-
-      // Movimento player
-      if (keys['arrowleft']) player.vx = -2.5;
-      else if (keys['arrowright']) player.vx = 2.5;
-      else player.vx = 0;
-
-      // Pulo
-      if (keys['a'] && player.onGround) {
-        player.vy = -7;
-        player.onGround = false;
-      }
-
-      // Gravidade
-      player.vy += 0.35;
-      let nx = player.x + player.vx / tileSize;
-      let ny = player.y + player.vy / tileSize;
-
-      // Colisão com tiles
-      player.onGround = false;
-      for (let y = 0; y < 10; y++) {
-        for (let x = 0; x < 20; x++) {
-          let t = maps[level][y][x];
-          if (t === 1 || t === 2 || t === 3) {
-            let tx = x, ty = y;
-            let px = nx * tileSize, py = ny * tileSize;
-            let tw = tileSize, th = tileSize;
-            if (px + player.w > tx * tw && px < (tx + 1) * tw &&
-                py + player.h > ty * th && py < (ty + 1) * th) {
-              if (player.vy > 0 && py + player.h > ty * th) {
-                ny = ty - player.h / tileSize;
-                player.vy = 0;
-                player.onGround = true;
-              } else if (player.vy < 0 && py < ty * th) {
-                ny = ty + 1;
-                player.vy = 0;
-              }
-              if (player.vx > 0 && px + player.w > tx * tw) {
-                nx = tx - player.w / tileSize;
-                player.vx = 0;
-              } else if (player.vx < 0 && px < (tx + 1) * tw) {
-                nx = tx + 1;
-                player.vx = 0;
-              }
-              if (t === 2) player.vx *= 0.7; // água
-              if (t === 3) {
-                lives--;
-                player.x = 2;
-                player.y = 7;
-                player.vx = 0;
-                player.vy = 0;
-              }
-            }
-          }
-        }
-      }
-      player.x = nx;
-      player.y = ny;
-
-      // Limites
-      if (player.x < 0) player.x = 0;
-      if (player.x > 19 - player.w / tileSize) player.x = 19 - player.w / tileSize;
-      if (player.y > 8) {
-        player.x = 2;
-        player.y = 7;
-        lives--;
-        player.vx = 0;
-        player.vy = 0;
-      }
-
-      // Colisão com moeda
-      for (let y = 0; y < 10; y++) {
-        for (let x = 0; x < 20; x++) {
-          if (maps[level][y][x] === 4) {
-            let tx = x * tileSize, ty = y * tileSize;
-            if (player.x * tileSize + player.w > tx && player.x * tileSize < tx + tileSize &&
-                player.y * tileSize + player.h > ty && player.y * tileSize < ty + tileSize) {
-              maps[level][y][x] = 0;
-              coins++;
-            }
-          }
-        }
-      }
-
-      // Transição de fase
-      if (countCoins() === 0) {
-        if (level < maps.length - 1) {
-          level++;
-          player.x = 2;
-          player.y = 7;
-          player.vx = 0;
-          player.vy = 0;
-          loadEnemies();
-        } else {
-          alert("Parabéns! Você venceu todas as fases!");
-          restartGame();
-        }
-      }
-
-      // Inimigos
-      enemies.forEach(enemy => {
-        enemy.x += 0.03 * enemy.dir;
-        if (enemy.x < 1 || enemy.x > 18) enemy.dir *= -1;
-        if (Math.abs(player.x - enemy.x) < 0.7 && Math.abs(player.y - enemy.y) < 0.7) {
-          player.x = 2;
-          player.y = 7;
-          player.vx = 0;
-          player.vy = 0;
-          lives--;
-        }
-      });
-
-      // Game Over
-      if (lives <= 0) {
-        gameOver = true;
-        gameOverScreen.style.display = 'block';
-        canvas.style.display = 'none';
-      }
-
-      // HUD
-      document.getElementById('lives').textContent = "❤️".repeat(lives);
-      document.getElementById('coins').textContent = "Moedas: " + coins;
-      document.getElementById('level').textContent = "Fase: " + (level + 1);
-    }
-
-    function draw() {
-      console.log("Desenhando quadro...");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // Tiles
-      for (let y = 0; y < 10; y++) {
-        for (let x = 0; x < 20; x++) {
-          let t = maps[level][y][x];
-          if (t === 1) { // chão
-            ctx.fillStyle = "#654321";
-            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-            ctx.fillStyle = "rgba(0,0,0,0.2)";
-            ctx.fillRect(x * tileSize + 2, y * tileSize + 2, tileSize - 4, tileSize - 4);
-          }
-          if (t === 2) { // água
-            ctx.fillStyle = "#2196f3";
-            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-          }
-          if (t === 3) { // espinho
-            ctx.fillStyle = "#b71c1c";
-            ctx.beginPath();
-            ctx.moveTo(x * tileSize, (y + 1) * tileSize);
-            ctx.lineTo(x * tileSize + tileSize / 2, y * tileSize);
-            ctx.lineTo((x + 1) * tileSize, (y + 1) * tileSize);
-            ctx.closePath();
-            ctx.fill();
-          }
-          if (t === 4) { // moeda
-            ctx.drawImage(coinSprite, x * tileSize + 8, y * tileSize + 8, 16, 16);
-          }
-        }
-      }
-      // Player
-      ctx.drawImage(playerSprite, player.x * tileSize, player.y * tileSize, player.w, player.h);
-      // Inimigos
-      enemies.forEach(enemy => {
-        ctx.drawImage(enemySprite, enemy.x * tileSize, enemy.y * tileSize, enemy.w, enemy.h);
-      });
-    }
-
-    function loop() {
-      if (!gameOver) {
-        update();
-        draw();
-        requestAnimationFrame(loop);
-      }
-    }
-
-    // --- Iniciar ---
-    console.log("Iniciando o jogo...");
-    loadEnemies();
-    loop();
-  </script>
+  <div id="game-container"></div>
+  
+  <!-- Phaser 3 -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+  
+  <!-- Game Scripts -->
+  <script src="js/scenes/BootScene.js"></script>
+  <script src="js/scenes/PreloadScene.js"></script>
+  <script src="js/scenes/MenuScene.js"></script>
+  <script src="js/scenes/GameScene.js"></script>
+  <script src="js/scenes/UIScene.js"></script>
+  <script src="js/entities/Player.js"></script>
+  <script src="js/entities/Enemy.js"></script>
+  <script src="js/entities/Collectible.js"></script>
+  <script src="js/main.js"></script>
 </body>
-</html>
+</html>`,
+
+    'css/style.css': `body {
+  margin: 0;
+  padding: 0;
+  background: #2c3e50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-family: Arial, sans-serif;
+}
+
+#game-container {
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  overflow: hidden;
+}`,
+
+    'js/main.js': `// Configuração principal do jogo
+const config = {
+  type: Phaser.AUTO,
+  width: 960,
+  height: 540,
+  parent: 'game-container',
+  pixelArt: false,
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 1000 },
+      debug: false
+    }
+  },
+  scene: [
+    BootScene,
+    PreloadScene,
+    MenuScene,
+    GameScene,
+    UIScene
+  ]
+};
+
+// Inicializa o jogo
+const game = new Phaser.Game(config);
+
+// Variáveis globais
+game.globals = {
+  gameWidth: config.width,
+  gameHeight: config.height,
+  bgColor: '#2c3e50',
+  playerStats: {
+    lives: 3,
+    coins: 0,
+    score: 0,
+    level: 1,
+    weapon: 'pistol',
+    hasJetpack: false,
+    hasShield: false
+  },
+  sfx: {},
+  music: {}
+};`,
+
+    'js/scenes/BootScene.js': `// Cena de inicialização
+class BootScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'BootScene' });
+  }
+
+  preload() {
+    // Carrega assets mínimos para a tela de carregamento
+    this.load.image('logo', 'assets/images/logo.png');
+    this.load.image('loading-bar', 'assets/images/loading-bar.png');
+    this.load.image('loading-bar-bg', 'assets/images/loading-bar-bg.png');
+  }
+
+  create() {
+    // Configura o jogo
+    this.cameras.main.setBackgroundColor(game.globals.bgColor);
+    
+    // Transição para a cena de carregamento
+    this.scene.start('PreloadScene');
+  }
+}`,
+
+    'js/scenes/PreloadScene.js': `// Cena de carregamento de assets
+class PreloadScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'PreloadScene' });
+  }
+
+  preload() {
+    // Configura a barra de carregamento
+    const width = game.globals.gameWidth;
+    const height = game.globals.gameHeight;
+    
+    // Adiciona logo
+    const logo = this.add.image(width/2, height/2 - 100, 'logo');
+    logo.setScale(0.5);
+    
+    // Barra de progresso
+    const progressBar = this.add.image(width/2, height/2 + 50, 'loading-bar');
+    const progressBarBg = this.add.image(width/2, height/2 + 50, 'loading-bar-bg');
+    progressBar.setOrigin(0.5);
+    progressBarBg.setOrigin(0.5);
+    
+    // Texto de carregamento
+    const loadingText = this.add.text(width/2, height/2 + 90, 'Carregando...', {
+      font: '16px Arial',
+      fill: '#ffffff'
+    });
+    loadingText.setOrigin(0.5);
+    
+    // Atualiza a barra de progresso
+    this.load.on('progress', (value) => {
+      progressBar.setScale(value, 1);
+    });
+    
+    // Carrega todos os assets do jogo
+    
+    // Tilesets e mapas
+    this.load.image('tiles-terrain', 'assets/tilesets/terrain.png');
+    this.load.image('tiles-items', 'assets/tilesets/items.png');
+    this.load.tilemapTiledJSON('map-level1', 'assets/maps/level1.json');
+    this.load.tilemapTiledJSON('map-level2', 'assets/maps/level2.json');
+    
+    // Sprites do jogador
+    this.load.spritesheet('player', 'assets/sprites/player.png', {
+      frameWidth: 64,
+      frameHeight: 64
+    });
+    
+    // Sprites de inimigos
+    this.load.spritesheet('enemy-zombie', 'assets/sprites/enemy-zombie.png', {
+      frameWidth: 64,
+      frameHeight: 64
+    });
+    this.load.spritesheet('enemy-robot', 'assets/sprites/enemy-robot.png', {
+      frameWidth: 64,
+      frameHeight: 64
+    });
+    this.load.spritesheet('enemy-boss', 'assets/sprites/enemy-boss.png', {
+      frameWidth: 96,
+      frameHeight: 96
+    });
+    
+    // Coletáveis e power-ups
+    this.load.spritesheet('coin', 'assets/sprites/coin.png', {
+      frameWidth: 32,
+      frameHeight: 32
+    });
+    this.load.image('jetpack', 'assets/sprites/jetpack.png');
+    this.load.image('shield', 'assets/sprites/shield.png');
+    this.load.image('weapon-upgrade', 'assets/sprites/weapon-upgrade.png');
+    
+    // Efeitos
+    this.load.spritesheet('explosion', 'assets/sprites/explosion.png', {
+      frameWidth: 64,
+      frameHeight: 64
+    });
+    this.load.spritesheet('splash', 'assets/sprites/water-splash.png', {
+      frameWidth: 48,
+      frameHeight: 48
+    });
+    
+    // Projéteis
+    this.load.image('bullet', 'assets/sprites/bullet.png');
+    this.load.image('grenade', 'assets/sprites/grenade.png');
+    
+    // UI
+    this.load.image('heart', 'assets/ui/heart.png');
+    this.load.image('coin-ui', 'assets/ui/coin.png');
+    this.load.image('button', 'assets/ui/button.png');
+    
+    // Sons
+    this.load.audio('jump', 'assets/sounds/jump.mp3');
+    this.load.audio('coin-pickup', 'assets/sounds/coin.mp3');
+    this.load.audio('hurt', 'assets/sounds/hurt.mp3');
+    this.load.audio('shoot', 'assets/sounds/shoot.mp3');
+    this.load.audio('explosion', 'assets/sounds/explosion.mp3');
+    this.load.audio('splash', 'assets/sounds/splash.mp3');
+    
+    // Música
+    this.load.audio('music-menu', 'assets/music/menu.mp3');
+    this.load.audio('music-game', 'assets/music/game.mp3');
+  }
+
+  create() {
+    // Cria animações
+    this.createAnimations();
+    
+    // Carrega sons nas variáveis globais
+    game.globals.sfx = {
+      jump: this.sound.add('jump'),
+      coinPickup: this.sound.add('coin-pickup'),
+      hurt: this.sound.add('hurt'),
+      shoot: this.sound.add('shoot'),
+      explosion: this.sound.add('explosion'),
+      splash: this.sound.add('splash')
+    };
+    
+    game.globals.music = {
+      menu: this.sound.add('music-menu', { loop: true, volume: 0.5 }),
+      game: this.sound.add('music-game', { loop: true, volume: 0.5 })
+    };
+    
+    // Vai para o menu principal
+    this.scene.start('MenuScene');
+  }
+  
+  createAnimations() {
+    // Animações do jogador
+    this.anims.create({
+      key: 'player-idle',
+      frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+      frameRate: 8,
+      repeat: -1
+    });
+    
+    this.anims.create({
+      key: 'player-run',
+      frames: this.anims.generateFrameNumbers('player', { start: 4, end: 11 }),
+      frameRate: 12,
+      repeat: -1
+    });
+    
+    this.anims.create({
+      key: 'player-jump',
+      frames: this.anims.generateFrameNumbers('player', { start: 12, end: 15 }),
+      frameRate: 10,
+      repeat: 0
+    });
+    
+    // Animações de inimigos
+    this.anims.create({
+      key: 'zombie-walk',
+      frames: this.anims.generateFrameNumbers('enemy-zombie', { start: 0, end: 5 }),
+      frameRate: 8,
+      repeat: -1
+    });
+    
+    this.anims.create({
+      key: 'robot-walk',
+      frames: this.anims.generateFrameNumbers('enemy-robot', { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: -1
+    });
+    
+    // Animações de coletáveis
+    this.anims.create({
+      key: 'coin-spin',
+      frames: this.anims.generateFrameNumbers('coin', { start: 0, end: 7 }),
+      frameRate: 10,
+      repeat: -1
+    });
+    
+    // Animações de efeitos
+    this.anims.create({
+      key: 'explosion',
+      frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 7 }),
+      frameRate: 15,
+      repeat: 0
+    });
+    
+    this.anims.create({
+      key: 'water-splash',
+      frames: this.anims.generateFrameNumbers('splash', { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: 0
+    });
+  }
+}`,
+
+    'js/scenes/MenuScene.js': `// Cena do menu principal
+class MenuScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'MenuScene' });
+  }
+
+  create() {
+    const width = game.globals.gameWidth;
+    const height = game.globals.gameHeight;
+    
+    // Fundo com gradiente
+    this.add.graphics()
+      .fillGradientStyle(0x1a2a3a, 0x1a2a3a, 0x3a1a2a, 0x3a1a2a, 1)
+      .fillRect(0, 0, width, height);
+    
+    // Logo do jogo
+    const logo = this.add.image(width/2, height/2 - 100, 'logo');
+    logo.setScale(0.7);
+    
+    // Botões do menu
+    const playButton = this.add.image(width/2, height/2 + 50, 'button');
+    const playText = this.add.text(width/2, height/2 + 50, 'JOGAR', {
+      font: 'bold 24px Arial',
+      fill: '#ffffff'
+    });
+    playText.setOrigin(0.5);
+    
+    // Torna o botão interativo
+    playButton.setInteractive();
+    playButton.on('pointerover', () => {
+      playButton.setTint(0xcccccc);
+    });
+    playButton.on('pointerout', () => {
+      playButton.clearTint();
+    });
+    playButton.on('pointerdown', () => {
+      // Inicia o jogo
+      game.globals.music.menu.stop();
+      this.scene.start('GameScene');
+    });
+    
+    // Inicia a música do menu
+    if (!game.globals.music.menu.isPlaying) {
+      game.globals.music.menu.play();
+    }
+  }
+}`,
+
+    'js/scenes/GameScene.js': `// Cena principal do jogo
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'GameScene' });
+  }
+
+  create() {
+    // Reinicia estatísticas do jogador se necessário
+    if (game.globals.playerStats.lives <= 0) {
+      game.globals.playerStats = {
+        lives: 3,
+        coins: 0,
+        score: 0,
+        level: 1,
+        weapon: 'pistol',
+        hasJetpack: false,
+        hasShield: false
+      };
+    }
+    
+    // Inicia a música do jogo
+    if (!game.globals.music.game.isPlaying) {
+      game.globals.music.game.play();
+    }
+    
+    // Carrega o mapa
+    this.createMap();
+    
+    // Cria o jogador
+    this.createPlayer();
+    
+    // Cria inimigos
+    this.createEnemies();
+    
+    // Cria coletáveis
+    this.createCollectibles();
+    
+    // Configura a câmera
+    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+    this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+    
+    // Inicia a UI
+    this.scene.launch('UIScene');
+    
+    // Configura colisões
+    this.setupCollisions();
+  }
+  
+  update() {
+    // Atualiza o jogador
+    this.player.update();
+    
+    // Atualiza inimigos
+    this.enemies.forEach(enemy => enemy.update());
+    
+    // Verifica se o jogador caiu no abismo
+    if (this.player.sprite.y > this.map.heightInPixels) {
+      this.playerDie();
+    }
+  }
+  
+  createMap() {
+    // Carrega o mapa do nível atual
+    const mapKey = 'map-level' + game.globals.playerStats.level;
+    this.map = this.make.tilemap({ key: mapKey });
+    
+    // Adiciona tilesets
+    const terrainTiles = this.map.addTilesetImage('terrain', 'tiles-terrain');
+    const itemTiles = this.map.addTilesetImage('items', 'tiles-items');
+    
+    // Cria camadas
+    this.backgroundLayer = this.map.createLayer('background', [terrainTiles, itemTiles], 0, 0);
+    this.groundLayer = this.map.createLayer('ground', [terrainTiles], 0, 0);
+    this.hazardsLayer = this.map.createLayer('hazards', [terrainTiles, itemTiles], 0, 0);
+    
+    // Configura colisões
+    this.groundLayer.setCollisionByProperty({ collides: true });
+    this.hazardsLayer.setCollisionByProperty({ hazard: true });
+    
+    // Configura propriedades especiais
+    this.waterTiles = this.groundLayer.filterTiles(tile => tile.properties.water);
+    this.spikeTiles = this.hazardsLayer.filterTiles(tile => tile.properties.spike);
+  }
+  
+  createPlayer() {
+    // Encontra o ponto de spawn do jogador no mapa
+    const spawnPoint = this.map.findObject('objects', obj => obj.name === 'player-spawn');
+    
+    // Cria o jogador
+    this.player = new Player(this, spawnPoint.x, spawnPoint.y);
+    
+    // Aplica upgrades salvos
+    if (game.globals.playerStats.hasJetpack) {
+      this.player.giveJetpack();
+    }
+    if (game.globals.playerStats.hasShield) {
+      this.player.giveShield();
+    }
+    if (game.globals.playerStats.weapon !== 'pistol') {
+      this.player.setWeapon(game.globals.playerStats.weapon);
+    }
+  }
+  
+  createEnemies() {
+    this.enemies = [];
+    
+    // Encontra pontos de spawn de inimigos no mapa
+    const enemySpawns = this.map.filterObjects('objects', obj => obj.name.startsWith('enemy-'));
+    
+    // Cria cada inimigo
+    enemySpawns.forEach(spawn => {
+      let enemy;
+      if (spawn.name === 'enemy-zombie') {
+        enemy = new Enemy(this, spawn.x, spawn.y, 'zombie');
+      } else if (spawn.name === 'enemy-robot') {
+        enemy = new Enemy(this, spawn.x, spawn.y, 'robot');
+      } else if (spawn.name === 'enemy-boss') {
+        enemy = new Enemy(this, spawn.x, spawn.y, 'boss');
+      }
+      
+      if (enemy) {
+        this.enemies.push(enemy);
+      }
+    });
+  }
+  
+  createCollectibles() {
+    this.coins = this.physics.add.group();
+    this.powerups = this.physics.add.group();
+    
+    // Encontra coletáveis no mapa
+    const collectibles = this.map.filterObjects('objects', obj => 
+      obj.name === 'coin' || obj.name === 'jetpack' || 
+      obj.name === 'shield' || obj.name === 'weapon-upgrade'
+    );
+    
+    // Cria cada coletável
+    collectibles.forEach(item => {
+      if (item.name === 'coin') {
+        const coin = this.coins.create(item.x, item.y, 'coin');
+        coin.play('coin-spin');
+        coin.setOrigin(0.5, 1);
+        coin.body.setSize(20, 20);
+        coin.body.setOffset(6, 6);
+      } else {
+        const powerup = this.powerups.create(item.x, item.y, item.name);
+        powerup.setOrigin(0.5, 1);
+        powerup.type = item.name;
+      }
+    });
+  }
+  
+  setupCollisions() {
+    // Colisão do jogador com o chão
+    this.physics.add.collider(this.player.sprite, this.groundLayer);
+    
+    // Colisão de inimigos com o chão
+    this.enemies.forEach(enemy => {
+      this.physics.add.collider(enemy.sprite, this.groundLayer);
+    });
+    
+    // Colisão de coletáveis com o chão
+    this.physics.add.collider(this.coins, this.groundLayer);
+    this.physics.add.collider(this.powerups, this.groundLayer);
+    
+    // Colisão do jogador com hazards
+    this.physics.add.collider(this.player.sprite, this.hazardsLayer, this.playerHitHazard, null, this);
+    
+    // Colisão do jogador com inimigos
+    this.enemies.forEach(enemy => {
+      this.physics.add.collider(this.player.sprite, enemy.sprite, this.playerHitEnemy, null, this);
+      
+      // Colisão de projéteis com inimigos
+      this.physics.add.collider(this.player.bullets, enemy.sprite, (bullet, enemySprite) => {
+        bullet.destroy();
+        enemy.damage(1);
+      }, null, this);
+    });
+    
+    // Colisão do jogador com coletáveis
+    this.physics.add.overlap(this.player.sprite, this.coins, this.collectCoin, null, this);
+    this.physics.add.overlap(this.player.sprite, this.powerups, this.collectPowerup, null, this);
+  }
+  
+  playerHitHazard(player, hazard) {
+    // Verifica o tipo de hazard
+    if (hazard.properties.spike) {
+      this.playerDamage(1);
+    } else if (hazard.properties.water) {
+      // Efeito de água: reduz velocidade
+      this.player.inWater = true;
+      
+      // Cria splash se acabou de entrar na água
+      if (!this.player.wasInWater) {
+        game.globals.sfx.splash.play();
+        const splash = this.add.sprite(player.x, hazard.y, 'splash');
+        splash.play('water-splash');
+        splash.once('animationcomplete', () => {
+          splash.destroy();
+        });
+      }
+      
+      this.player.wasInWater = true;
+    }
+  }
+  
+  playerHitEnemy(player, enemy) {
+    // Verifica se o jogador está caindo em cima do inimigo
+    if (player.body.velocity.y > 0 && player.y < enemy.y - enemy.height/2) {
+      // Pula no inimigo
+      const enemyObj = this.enemies.find(e => e.sprite === enemy);
+      if (enemyObj) {
+        enemyObj.damage(1);
+        this.player.sprite.setVelocityY(-400);
+      }
+    } else {
+      // Colisão lateral ou de baixo para cima
+      this.playerDamage(1);
+    }
+  }
+  
+  collectCoin(player, coin) {
+    coin.destroy();
+    game.globals.sfx.coinPickup.play();
+    game.globals.playerStats.coins++;
+    game.globals.playerStats.score += 10;
+    
+    // Atualiza a UI
+    this.events.emit('updateCoins', game.globals.playerStats.coins);
+  }
+  
+  collectPowerup(player, powerup) {
+    const type = powerup.type;
+    
+    if (type === 'jetpack') {
+      this.player.giveJetpack();
+      game.globals.playerStats.hasJetpack = true;
+    } else if (type === 'shield') {
+      this.player.giveShield();
+      game.globals.playerStats.hasShield = true;
+    } else if (type === 'weapon-upgrade') {
+      this.player.setWeapon('machinegun');
+      game.globals.playerStats.weapon = 'machinegun';
+    }
+    
+    powerup.destroy();
+  }
+  
+  playerDamage(amount) {
+    // Verifica se o jogador tem escudo
+    if (this.player.hasShield) {
+      this.player.removeShield();
+      game.globals.playerStats.hasShield = false;
+      return;
+    }
+    
+    // Aplica dano
+    game.globals.playerStats.lives -= amount;
+    game.globals.sfx.hurt.play();
+    
+    // Atualiza a UI
+    this.events.emit('updateLives', game.globals.playerStats.lives);
+    
+    // Efeito de dano
+    this.player.sprite.setTint(0xff0000);
+    this.time.delayedCall(200, () => {
+      this.player.sprite.clearTint();
+    });
+    
+    // Verifica game over
+    if (game.globals.playerStats.lives <= 0) {
+      this.playerDie();
+    }
+  }
+  
+  playerDie() {
+    // Efeito de morte
+    const explosion = this.add.sprite(this.player.sprite.x, this.player.sprite.y, 'explosion');
+    explosion.play('explosion');
+    game.globals.sfx.explosion.play();
+    
+    // Esconde o jogador
+    this.player.sprite.setVisible(false);
+    
+    // Reinicia o nível após um delay
+    this.time.delayedCall(1500, () => {
+      game.globals.music.game.stop();
+      this.scene.stop('UIScene');
+      this.scene.start('MenuScene');
+    });
+  }
+  
+  nextLevel() {
+    // Avança para o próximo nível
+    game.globals.playerStats.level++;
+    
+    // Reinicia a cena
+    this.scene.restart();
+  }
+}`,
+
+    'js/scenes/UIScene.js': `// Cena de interface do usuário (sobreposta ao jogo)
+class UIScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'UIScene' });
+  }
+
+  create() {
+    // Referência à cena do jogo
+    this.gameScene = this.scene.get('GameScene');
+    
+    // Escuta eventos da cena do jogo
+    this.gameScene.events.on('updateLives', this.updateLives, this);
+    this.gameScene.events.on('updateCoins', this.updateCoins, this);
+    
+    // Cria elementos da UI
+    this.createUI();
+  }
+  
+  createUI() {
+    // Vidas
+    this.livesGroup = this.add.group();
+    for (let i = 0; i < game.globals.playerStats.lives; i++) {
+      const heart = this.livesGroup.create(30 + i * 40, 30, 'heart');
+      heart.setScrollFactor(0);
+      heart.setScale(0.8);
+    }
+    
+    // Moedas
+    this.add.image(game.globals.gameWidth - 120, 30, 'coin-ui').setScrollFactor(0).setScale(0.8);
+    this.coinsText = this.add.text(game.globals.gameWidth - 90, 30, 'x ' + game.globals.playerStats.coins, {
+      font: '24px Arial',
+      fill: '#ffffff'
+    }).setScrollFactor(0).setOrigin(0, 0.5);
+    
+    // Nível atual
+    this.levelText = this.add.text(game.globals.gameWidth / 2, 30, 'Nível ' + game.globals.playerStats.level, {
+      font: '24px Arial',
+      fill: '#ffffff'
+    }).setScrollFactor(0).setOrigin(0.5);
+    
+    // Arma atual
+    this.weaponText = this.add.text(30, game.globals.gameHeight - 30, 'Arma: ' + this.formatWeaponName(game.globals.playerStats.weapon), {
+      font: '18px Arial',
+      fill: '#ffffff'
+    }).setScrollFactor(0).setOrigin(0, 1);
+    
+    // Itens
+    let itemsText = '';
+    if (game.globals.playerStats.hasJetpack) itemsText += 'Jetpack ';
+    if (game.globals.playerStats.hasShield) itemsText += 'Escudo ';
+    if (itemsText === '') itemsText = 'Nenhum';
+    
+    this.itemsText = this.add.text(game.globals.gameWidth - 30, game.globals.gameHeight - 30, 'Itens: ' + itemsText, {
+      font: '18px Arial',
+      fill: '#ffffff'
+    }).setScrollFactor(0).setOrigin(1, 1);
+  }
+  
+  updateLives(lives) {
+    // Atualiza os corações na UI
+    this.livesGroup.clear(true, true);
+    for (let i = 0; i < lives; i++) {
+      const heart = this.livesGroup.create(30 + i * 40, 30, 'heart');
+      heart.setScrollFactor(0);
+      heart.setScale(0.8);
+    }
+  }
+  
+  updateCoins(coins) {
+    // Atualiza o contador de moedas
+    this.coinsText.setText('x ' + coins);
+  }
+  
+  formatWeaponName(weapon) {
+    if (weapon === 'pistol') return 'Pistola';
+    if (weapon === 'machinegun') return 'Metralhadora';
+    return weapon;
+  }
+}`,
+
+    'js/entities/Player.js': `// Classe do jogador
+class Player {
+  constructor(scene, x, y) {
+    this.scene = scene;
+    
+    // Cria o sprite do jogador
+    this.sprite = scene.physics.add.sprite(x, y, 'player');
+    this.sprite.setOrigin(0.5, 1);
+    
+    // Configura a física
+    this.sprite.body.setSize(40, 60);
+    this.sprite.body.setOffset(12, 4);
+    
+    // Propriedades do jogador
+    this.jumpForce = -600;
+    this.moveSpeed = 300;
+    this.hasJetpack = false;
+    this.hasShield = false;
+    this.weapon = 'pistol';
+    this.inWater = false;
+    this.wasInWater = false;
+    
+    // Projéteis
+    this.bullets = scene.physics.add.group();
+    this.lastShot = 0;
+    this.fireRate = 500; // ms entre tiros
+    
+    // Controles
+    this.cursors = scene.input.keyboard.createCursorKeys();
+    this.jumpKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    this.shootKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    
+    // Inicia a animação padrão
+    this.sprite.play('player-idle');
+  }
+  
+  update() {
+    // Reinicia flag de água
+    this.wasInWater = this.inWater;
+    this.inWater = false;
+    
+    // Movimento horizontal
+    if (this.cursors.left.isDown) {
+      this.moveLeft();
+    } else if (this.cursors.right.isDown) {
+      this.moveRight();
+    } else {
+      this.stopMoving();
+    }
+    
+    // Pulo
+    if (Phaser.Input.Keyboard.JustDown(this.jumpKey)) {
+      this.jump();
+    }
+    
+    // Tiro
+    if (this.shootKey.isDown) {
+      this.shoot();
+    }
+    
+    // Atualiza animações
+    this.updateAnimation();
+  }
+  
+  moveLeft() {
+    const speed = this.inWater ? this.moveSpeed * 0.6 : this.moveSpeed;
+    this.sprite.setVelocityX(-speed);
+    this.sprite.setFlipX(true);
+  }
+  
+  moveRight() {
+    const speed = this.inWater ? this.moveSpeed * 0.6 : this.moveSpeed;
+    this.sprite.setVelocityX(speed);
+    this.sprite.setFlipX(false);
+  }
+  
+  stopMoving() {
+    this.sprite.setVelocityX(0);
+  }
+  
+  jump() {
+    // Pulo normal se estiver no chão
+    if (this.sprite.body.onFloor()) {
+      this.sprite.setVelocityY(this.jumpForce);
+      game.globals.sfx.jump.play();
+    } 
+    // Jetpack permite pulo duplo
+    else if (this.hasJetpack && !this.doubleJumped) {
+      this.sprite.setVelocityY(this.jumpForce * 0.8);
+      this.doubleJumped = true;
+      game.globals.sfx.jump.play();
+    }
+    
+    // Reinicia o pulo duplo quando tocar o chão
+    if (this.sprite.body.onFloor()) {
+      this.doubleJumped = false;
+    }
+  }
+  
+  shoot() {
+    const time = this.scene.time.now;
+    
+    // Verifica o cooldown de tiro
+    if (time > this.lastShot) {
+      // Cria o projétil
+      const bullet = this.bullets.create(
+        this.sprite.x + (this.sprite.flipX ? -20 : 20),
+        this.sprite.y - 40,
+        'bullet'
+      );
+      
+      // Configura o projétil
+      const bulletSpeed = 600;
+      bullet.setVelocityX(this.sprite.flipX ? -bulletSpeed : bulletSpeed);
+      bullet.body.allowGravity = false;
+      
+      // Configura o cooldown baseado na arma
+      if (this.weapon === 'pistol') {
+        this.lastShot = time + 500;
+      } else if (this.weapon === 'machinegun') {
+        this.lastShot = time + 150;
+      }
+      
+      // Som de tiro
+      game.globals.sfx.shoot.play();
+      
+      // Destrói o projétil após um tempo
+      this.scene.time.delayedCall(2000, () => {
+        if (bullet.active) bullet.destroy();
+      });
+    }
+  }
+  
+  updateAnimation() {
+    // No ar
+    if (!this.sprite.body.onFloor()) {
+      this.sprite.play('player-jump', true);
+    }
+    // Correndo
+    else if (this.sprite.body.velocity.x !== 0) {
+      this.sprite.play('player-run', true);
+    }
+    // Parado
+    else {
+      this.sprite.play('player-idle', true);
+    }
+  }
+  
+  giveJetpack() {
+    this.hasJetpack = true;
+  }
+  
+  giveShield() {
+    this.hasShield = true;
+    
+    // Efeito visual de escudo
+    this.shieldEffect = this.scene.add.graphics();
+    this.shieldEffect.lineStyle(2, 0x00ffff, 0.8);
+    this.shieldEffect.strokeCircle(0, 0, 32);
+    
+    // Adiciona o escudo como filho do sprite
+    this.sprite.add(this.shieldEffect);
+  }
+  
+  removeShield() {
+    this.hasShield = false;
+    
+    // Remove o efeito visual
+    if (this.shieldEffect) {
+      this.shieldEffect.destroy();
+      this.shieldEffect = null;
+    }
+  }
+  
+  setWeapon(weapon) {
+    this.weapon = weapon;
+  }
+}`,
+
+    'js/entities/Enemy.js': `// Classe de inimigos
+class Enemy {
+  constructor(scene, x, y, type) {
+    this.scene = scene;
+    this.type = type;
+    
+    // Configura propriedades baseadas no tipo
+    if (type === 'zombie') {
+      this.hp = 2;
+      this.speed = 100;
+      this.sprite = scene.physics.add.sprite(x, y, 'enemy-zombie');
+      this.sprite.play('zombie-walk');
+    } else if (type === 'robot') {
+      this.hp = 3;
+      this.speed = 150;
+      this.sprite = scene.physics.add.sprite(x, y, 'enemy-robot');
+      this.sprite.play('robot-walk');
+    } else if (type === 'boss') {
+      this.hp = 10;
+      this.speed = 80;
+      this.sprite = scene.physics.add.sprite(x, y, 'enemy-boss');
+    }
+    
+    // Configura o sprite
+    this.sprite.setOrigin(0.5, 1);
+    
+    // Ajusta a hitbox
+    if (type === 'boss') {
+      this.sprite.body.setSize(60, 80);
+      this.sprite.body.setOffset(18, 16);
+    } else {
+      this.sprite.body.setSize(40, 60);
+      this.sprite.body.setOffset(12, 4);
+    }
+    
+    // Direção inicial
+    this.direction = 1;
+  }
+  
+  update() {
+    // Movimento básico de patrulha
+    if (this.sprite.body.onFloor()) {
+      this.sprite.setVelocityX(this.speed * this.direction);
+    }
+    
+    // Verifica se bateu em uma parede ou chegou na borda
+    const touchingWall = this.sprite.body.blocked.left || this.sprite.body.blocked.right;
+    const atEdge = !this.scene.groundLayer.getTileAtWorldXY(
+      this.sprite.x + (this.direction * 32),
+      this.sprite.y + 8
+    );
+    
+    // Inverte a direção se necessário
+    if (touchingWall || atEdge) {
+      this.direction *= -1;
+      this.sprite.setFlipX(this.direction === -1);
+    }
+  }
+  
+  damage(amount) {
+    this.hp -= amount;
+    
+    // Efeito de dano
+    this.sprite.setTint(0xff0000);
+    this.scene.time.delayedCall(200, () => {
+      if (this.sprite.active) this.sprite.clearTint();
+    });
+    
+    // Verifica se morreu
+    if (this.hp <= 0) {
+      this.die();
+    }
+  }
+  
+  die() {
+    // Efeito de explosão
+    const explosion = this.scene.add.sprite(this.sprite.x, this.sprite.y - 30, 'explosion');
+    explosion.play('explosion');
+    game.globals.sfx.explosion.play();
+    
+    // Adiciona pontos
+    if (this.type === 'zombie') {
+      game.globals.playerStats.score += 50;
+    } else if (this.type === 'robot') {
+      game.globals.playerStats.score += 100;
+    } else if (this.type === 'boss') {
+      game.globals.playerStats.score += 500;
+      
+      // Avança para o próximo nível se for o chefe
+      this.scene.time.delayedCall(1500, () => {
+        this.scene.nextLevel();
+      });
+    }
+    
+    // Remove o inimigo
+    this.sprite.destroy();
+  }
+}`,
+
+    'js/entities/Collectible.js': `// Classe para itens coletáveis
+class Collectible {
+  constructor(scene, x, y, type) {
+    this.scene = scene;
+    this.type = type;
+    
+    // Cria o sprite baseado no tipo
+    if (type === 'coin') {
+      this.sprite = scene.physics.add.sprite(x, y, 'coin');
+      this.sprite.play('coin-spin');
+    } else {
+      this.sprite = scene.physics.add.sprite(x, y, type);
+    }
+    
+    // Configura o sprite
+    this.sprite.setOrigin(0.5, 0.5);
+    
+    // Adiciona física
+    this.sprite.body.setAllowGravity(false);
+    
+    // Efeito de flutuação
+    scene.tweens.add({
+      targets: this.sprite,
+      y: y - 10,
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+  
+  collect() {
+    // Efeito de coleta
+    const particles = this.scene.add.particles('coin');
+    const emitter = particles.createEmitter({
+      x: this.sprite.x,
+      y: this.sprite.y,
+      speed: { min: 50, max: 150 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.5, end: 0 },
+      lifespan: 500,
+      quantity: 10
+    });
+    
+    // Remove o sprite
+    this.sprite.destroy();
+    
+    // Remove as partículas após um tempo
+    this.scene.time.delayedCall(500, () => {
+      particles.destroy();
+    });
+  }
+}`
+  };
+  
+  // Estrutura de pastas do projeto
+  const projectStructure = [
+    {
+      name: 'Estrutura do Projeto',
+      children: [
+        { name: 'index.html' },
+        { 
+          name: 'css',
+          children: [
+            { name: 'style.css' }
+          ]
+        },
+        {
+          name: 'js',
+          children: [
+            { name: 'main.js' },
+            {
+              name: 'scenes',
+              children: [
+                { name: 'BootScene.js' },
+                { name: 'PreloadScene.js' },
+                { name: 'MenuScene.js' },
+                { name: 'GameScene.js' },
+                { name: 'UIScene.js' }
+              ]
+            },
+            {
+              name: 'entities',
+              children: [
+                { name: 'Player.js' },
+                { name: 'Enemy.js' },
+                { name: 'Collectible.js' }
+              ]
+            }
+          ]
+        },
+        {
+          name: 'assets',
+          children: [
+            {
+              name: 'images',
+              children: [
+                { name: 'logo.png' },
+                { name: 'loading-bar.png' },
+                { name: 'loading-bar-bg.png' }
+              ]
+            },
+            {
+              name: 'sprites',
+              children: [
+                { name: 'player.png' },
+                { name: 'enemy-zombie.png' },
+                { name: 'enemy-robot.png' },
+                { name: 'enemy-boss.png' },
+                { name: 'coin.png' },
+                { name: 'explosion.png' },
+                { name: 'water-splash.png' }
+              ]
+            },
+            {
+              name: 'tilesets',
+              children: [
+                { name: 'terrain.png' },
+                { name: 'items.png' }
+              ]
+            },
+            {
+              name: 'maps',
+              children: [
+                { name: 'level1.json' },
+                { name: 'level2.json' }
+              ]
+            },
+            {
+              name: 'ui',
+              children: [
+                { name: 'heart.png' },
+                { name: 'coin.png' },
+                { name: 'button.png' }
+              ]
+            },
+            {
+              name: 'sounds',
+              children: [
+                { name: 'jump.mp3' },
+                { name: 'coin.mp3' },
+                { name: 'hurt.mp3' },
+                { name: 'shoot.mp3' },
+                { name: 'explosion.mp3' },
+                { name: 'splash.mp3' }
+              ]
+            },
+            {
+              name: 'music',
+              children: [
+                { name: 'menu.mp3' },
+                { name: 'game.mp3' }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ];
+  
+  // Renderiza a estrutura de pastas
+  const renderTree = (node, depth = 0) => {
+    return (
+      <div key={node.name} style={{ marginLeft: depth * 20 + 'px', marginBottom: '5px' }}>
+        <div className="flex items-center">
+          <span className={`mr-2 ${node.children ? 'text-yellow-400' : 'text-blue-400'}`}>
+            {node.children ? '📁' : '📄'}
+          </span>
+          <span>{node.name}</span>
+        </div>
+        {node.children && node.children.map(child => renderTree(child, depth + 1))}
+      </div>
+    );
+  };
+  
+  // Renderiza o conteúdo do arquivo selecionado
+  const renderFileContent = (fileName) => {
+    if (files[fileName]) {
+      return (
+        <pre className="bg-gray-800 p-4 rounded-lg overflow-auto text-sm text-gray-200 max-h-[500px]">
+          <code>{files[fileName]}</code>
+        </pre>
+      );
+    }
+    return <p className="text-gray-400">Selecione um arquivo para ver seu conteúdo</p>;
+  };
+  
+  // Instruções para publicação no GitHub Pages
+  const deployInstructions = [
+    "1. Crie um novo repositório no GitHub",
+    "2. Clone o repositório para sua máquina local",
+    "3. Adicione todos os arquivos do projeto ao repositório",
+    "4. Faça commit e push das alterações",
+    "5. Vá para Settings > Pages no seu repositório",
+    "6. Em 'Source', selecione a branch 'main' e a pasta 'root'",
+    "7. Clique em 'Save' e aguarde alguns minutos",
+    "8. Seu jogo estará disponível em https://[seu-usuario].github.io/[nome-do-repo]"
+  ];
+  
+  // Componente principal
+  return (
+    <div className="bg-gray-900 text-white p-6 rounded-lg">
+      <h1 className="text-2xl font-bold mb-4">Plataformer Realista com Phaser 3</h1>
+      
+      {showInstructions && (
+        <div className="bg-blue-900 p-4 rounded-lg mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-xl font-bold">Instruções</h2>
+            <button 
+              onClick={() => setShowInstructions(false)}
+              className="bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded text-sm"
+            >
+              Fechar
+            </button>
+          </div>
+          <p className="mb-2">Este playground mostra a estrutura completa de um jogo de plataforma realista usando Phaser 3.</p>
+          <p className="mb-2">Navegue pelas abas para ver a estrutura do projeto, código-fonte e instruções de publicação.</p>
+          <p>Para criar seu próprio jogo, siga as instruções e copie os arquivos para seu projeto.</p>
+        </div>
+      )}
+      
+      <div className="mb-4">
+        <div className="flex border-b border-gray-700">
+          <button 
+            className={`px-4 py-2 ${activeTab === 'preview' ? 'bg-gray-700 text-white' : 'text-gray-400'}`}
+            onClick={() => setActiveTab('preview')}
+          >
+            Estrutura do Projeto
+          </button>
+          <button 
+            className={`px-4 py-2 ${activeTab === 'code' ? 'bg-gray-700 text-white' : 'text-gray-400'}`}
+            onClick={() => setActiveTab('code')}
+          >
+            Código-fonte
+          </button>
+          <button 
+            className={`px-4 py-2 ${activeTab === 'deploy' ? 'bg-gray-700 text-white' : 'text-gray-400'}`}
+            onClick={() => setActiveTab('deploy')}
+          >
+            Publicação
+          </button>
+        </div>
+        
+        <div className="p-4 bg-gray-800 rounded-b-lg">
+          {activeTab === 'preview' && (
+            <div>
+              <h3 className="text-xl mb-4">Estrutura de Arquivos</h3>
+              {projectStructure.map(node => renderTree(node))}
+            </div>
+          )}
+          
+          {activeTab === 'code' && (
+            <div>
+              <h3 className="text-xl mb-4">Código-fonte</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-900 p-4 rounded-lg">
+                  <h4 className="text-lg mb-2">Arquivos</h4>
+                  <div className="overflow-auto max-h-[400px]">
+                    <ul>
+                      {Object.keys(files).map(file => (
+                        <li 
+                          key={file}
+                          className="cursor-pointer hover:bg-gray-700 p-1 rounded"
+                          onClick={() => setActiveTab('file:' + file)}
+                        >
+                          {file}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <h4 className="text-lg mb-2">Conteúdo</h4>
+                  <p className="text-gray-400 mb-2">Clique em um arquivo para ver seu conteúdo</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {activeTab.startsWith('file:') && (
+            <div>
+              <h3 className="text-xl mb-4">
+                <button 
+                  className="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded mr-2"
+                  onClick={() => setActiveTab('code')}
+                >
+                  ← Voltar
+                </button>
+                {activeTab.replace('file:', '')}
+              </h3>
+              {renderFileContent(activeTab.replace('file:', ''))}
+            </div>
+          )}
+          
+          {activeTab === 'deploy' && (
+            <div>
+              <h3 className="text-xl mb-4">Publicação no GitHub Pages</h3>
+              <div className="bg-gray-900 p-4 rounded-lg">
+                <ol className="list-decimal pl-5 space-y-2">
+                  {deployInstructions.map((instruction, index) => (
+                    <li key={index}>{instruction}</li>
+                  ))}
+                </ol>
+              </div>
+              
+              <h3 className="text-xl mt-6 mb-4">Recursos Adicionais</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-900 p-4 rounded-lg">
+                  <h4 className="text-lg mb-2">Sprites e Tilesets</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><a href="https://kenney.nl/assets" className="text-blue-400 hover:underline" target="_blank">Kenney.nl</a> - Sprites gratuitos</li>
+                    <li><a href="https://opengameart.org/" className="text-blue-400 hover:underline" target="_blank">OpenGameArt</a> - Arte para jogos</li>
+                    <li><a href="https://itch.io/game-assets/free" className="text-blue-400 hover:underline" target="_blank">Itch.io</a> - Assets gratuitos</li>
+                  </ul>
+                </div>
+                <div className="bg-gray-900 p-4 rounded-lg">
+                  <h4 className="text-lg mb-2">Documentação</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><a href="https://phaser.io/learn" className="text-blue-400 hover:underline" target="_blank">Phaser Learning</a> - Tutoriais oficiais</li>
+                    <li><a href="https://photonstorm.github.io/phaser3-docs/" className="text-blue-400 hover:underline" target="_blank">Phaser 3 API Docs</a> - Documentação completa</li>
+                    <li><a href="https://github.com/photonstorm/phaser3-examples" className="text-blue-400 hover:underline" target="_blank">Phaser 3 Examples</a> - Exemplos de código</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className="mt-6 bg-gray-800 p-4 rounded-lg">
+        <h3 className="text-xl mb-2">Recursos do Jogo</h3>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Física realista (gravidade, colisão, plataformas)</li>
+          <li>Mapas com tiles (chão, água, espinhos)</li>
+          <li>Inimigos com IA básica</li>
+          <li>Coletáveis (moedas, power-ups)</li>
+          <li>Sistema de armas e projéteis</li>
+          <li>Efeitos visuais (explosões, splash de água)</li>
+          <li>Sons e música</li>
+          <li>Interface de usuário completa</li>
+          <li>Sistema de níveis</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
