@@ -3,24 +3,25 @@ const ctx = canvas.getContext('2d');
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 
-let balls, leftFlipper, rightFlipper, bumpers, score, gameOver, animationId, acceleratorAnim = 0, multiAnim = 0, labAnim = 0;
+let balls, leftFlipper, rightFlipper, bumpers, score, gameOver, animationId, accAnim = 0, multiAnim = 0, labAnim = 0;
 
 function resetGame() {
-    // Bola(s)
+    // Bola(s) - mais rápida
     balls = [{
         x: WIDTH / 2,
         y: HEIGHT - 140,
         radius: 15,
-        dx: 2.5 * (Math.random() > 0.5 ? 1 : -1),
-        dy: -4,
+        dx: 3.8 * (Math.random() > 0.5 ? 1 : -1),
+        dy: -6,
         color: "#fff",
-        speed: 1,
+        speed: 1.3,
         trail: []
     }];
 
-    // Palhetas (flippers) hiperrealistas
-    const flipperLength = 150;
-    const flipperWidth = 36;
+    // Palhetas (flippers) em formato de cone
+    const flipperLength = 160;
+    const flipperWidthBase = 38;
+    const flipperWidthTip = 12;
     const flipperY = HEIGHT - 70;
     leftFlipper = {
         x: WIDTH / 2 - 90,
@@ -28,7 +29,8 @@ function resetGame() {
         angle: -30,
         isUp: false,
         length: flipperLength,
-        width: flipperWidth
+        widthBase: flipperWidthBase,
+        widthTip: flipperWidthTip
     };
     rightFlipper = {
         x: WIDTH / 2 + 90,
@@ -36,29 +38,19 @@ function resetGame() {
         angle: 30,
         isUp: false,
         length: flipperLength,
-        width: flipperWidth
+        widthBase: flipperWidthBase,
+        widthTip: flipperWidthTip
     };
 
-    // Obstáculos especiais
+    // 7 obstáculos modernos e animados
     bumpers = [
-        // Normais
-        {x: WIDTH/2, y: 120, r: 22, color: "#ffeb3b", type: "normal"},
-        {x: WIDTH/2-100, y: 180, r: 18, color: "#ff4081", type: "normal"},
-        {x: WIDTH/2+100, y: 180, r: 18, color: "#4caf50", type: "normal"},
-        {x: WIDTH/2-140, y: 260, r: 16, color: "#00bcd4", type: "normal"},
-        {x: WIDTH/2+140, y: 260, r: 16, color: "#e91e63", type: "normal"},
-        {x: WIDTH/2-80, y: 340, r: 18, color: "#ff9800", type: "normal"},
-        {x: WIDTH/2+80, y: 340, r: 18, color: "#3f51b5", type: "normal"},
-        {x: WIDTH/2-40, y: 220, r: 14, color: "#cddc39", type: "normal"},
-        {x: WIDTH/2+40, y: 220, r: 14, color: "#9c27b0", type: "normal"},
-        // Especiais
-        {x: WIDTH/2, y: 420, r: 26, color: "#00ffe7", type: "accelerator"}, // Acelerador
-        {x: WIDTH/2-120, y: 500, r: 20, color: "#ff00ff", type: "multi"}, // Multiplicador
-        {x: WIDTH/2+120, y: 500, r: 20, color: "#00ff00", type: "labyrinth"}, // Labirinto
-        // Mais normais
-        {x: WIDTH/2-60, y: 600, r: 18, color: "#ffc107", type: "normal"},
-        {x: WIDTH/2+60, y: 600, r: 18, color: "#8bc34a", type: "normal"},
-        {x: WIDTH/2, y: 650, r: 22, color: "#607d8b", type: "normal"}
+        {x: WIDTH/2, y: 120, r: 28, color: "#ffeb3b", type: "normal"},
+        {x: WIDTH/2-100, y: 220, r: 22, color: "#00ffe7", type: "accelerator"},
+        {x: WIDTH/2+100, y: 220, r: 22, color: "#ff00ff", type: "multi"},
+        {x: WIDTH/2-60, y: 340, r: 24, color: "#00ff00", type: "labyrinth"},
+        {x: WIDTH/2+60, y: 340, r: 24, color: "#ff9800", type: "normal"},
+        {x: WIDTH/2-40, y: 500, r: 20, color: "#00bcd4", type: "normal"},
+        {x: WIDTH/2+40, y: 500, r: 20, color: "#e91e63", type: "normal"}
     ];
 
     score = 0;
@@ -123,29 +115,26 @@ function drawFlipper(f, isLeft) {
     ctx.strokeStyle = "#00ffe7";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    roundedFlipper(ctx, -f.length/2, -f.width/2, f.length, f.width, f.width/2.1);
+    coneFlipper(ctx, -f.length/2, -f.widthBase/2, f.length, f.widthBase, f.widthTip);
     ctx.fill();
     ctx.stroke();
     // Reflexo
     ctx.globalAlpha = 0.25;
     ctx.beginPath();
-    roundedFlipper(ctx, -f.length/2+8, -f.width/2+4, f.length-16, f.width-8, (f.width-8)/2.1);
+    coneFlipper(ctx, -f.length/2+8, -f.widthBase/2+4, f.length-16, f.widthBase-8, f.widthTip-4);
     ctx.fillStyle = "#fff";
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.restore();
 }
 
-function roundedFlipper(ctx, x, y, w, h, r) {
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
+// Função para desenhar palheta em formato de cone
+function coneFlipper(ctx, x, y, length, widthBase, widthTip) {
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + length, y + (widthTip - widthBase)/2);
+    ctx.lineTo(x + length, y + widthBase - (widthBase - widthTip)/2);
+    ctx.lineTo(x, y + widthBase);
+    ctx.closePath();
 }
 
 function drawBumpers() {
@@ -161,7 +150,7 @@ function drawBumpers() {
             grad.addColorStop(1, "#00bcd4");
             ctx.fillStyle = grad;
             ctx.shadowColor = "#00ffe7";
-            ctx.shadowBlur = 24 + 8*Math.abs(Math.sin(acceleratorAnim));
+            ctx.shadowBlur = 24 + 8*Math.abs(Math.sin(accAnim));
         } else if (b.type === "multi") {
             let grad = ctx.createRadialGradient(b.x, b.y, b.r*0.2, b.x, b.y, b.r);
             grad.addColorStop(0, "#fff");
@@ -248,10 +237,10 @@ function updateBalls() {
 
                 // Efeitos especiais
                 if (b.type === "accelerator") {
-                    ball.speed = 2.2;
+                    ball.speed = 2.5;
                     score += 30;
-                    acceleratorAnim = 0;
-                    setTimeout(() => { ball.speed = 1; }, 2000);
+                    accAnim = 0;
+                    setTimeout(() => { ball.speed = 1.3; }, 2000);
                 } else if (b.type === "multi") {
                     if (balls.length < 3) {
                         balls.push({
@@ -261,7 +250,7 @@ function updateBalls() {
                             dx: -ball.dx,
                             dy: ball.dy,
                             color: "#fff",
-                            speed: 1,
+                            speed: 1.3,
                             trail: []
                         });
                         score += 50;
@@ -298,7 +287,7 @@ function checkFlipperCollision(f, isLeft, ball) {
     let flipperEndX = fx + Math.cos(angle) * f.length/2;
     let flipperEndY = fy + Math.sin(angle) * f.length/2;
     let dist = Math.hypot(ball.x - flipperEndX, ball.y - flipperEndY);
-    if (dist < ball.radius + f.width/2 + 2 && ball.y < fy + 30 && ball.y > fy - 80) {
+    if (dist < ball.radius + f.widthBase/2 + 2 && ball.y < fy + 30 && ball.y > fy - 80) {
         ball.dy = -Math.abs(ball.dy);
         ball.dx += (isLeft ? -1 : 1) * 1.2 * Math.random();
         score += 2;
@@ -316,7 +305,7 @@ function draw() {
 }
 
 function loop() {
-    acceleratorAnim += 0.08;
+    accAnim += 0.08;
     multiAnim += 0.09;
     labAnim += 0.07;
     if (!gameOver) {
