@@ -1,5 +1,5 @@
 body {
-    background: linear-gradient(135deg, #0f2027 0%, #2c5364 100%);
+    background: radial-gradient(ellipse at 60% 30%, #23235b 0%, #0f1021 100%);
     color: #fff;
     text-align: center;
     font-family: 'Segoe UI', Arial, sans-serif;
@@ -21,7 +21,7 @@ h1 {
 }
 
 canvas {
-    background: radial-gradient(ellipse at 60% 30%, #23235b 0%, #0f1021 100%);
+    background: #0a1027;
     border: 6px solid #00ffe7;
     border-radius: 28px;
     display: block;
