@@ -3,22 +3,23 @@ const ctx = canvas.getContext('2d');
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 
-let balls, leftFlipper, rightFlipper, bumpers, score, gameOver, animationId, accAnim = 0, multiAnim = 0, labAnim = 0;
+let balls, leftFlipper, rightFlipper, obstacles, score, gameOver, animationId;
+let starAnim = 0, portalAnim = 0, invertAnim = 0, asteroidAnim = 0, slowAnim = 0;
+let controlsInverted = false, invertTimeout = null;
 
 function resetGame() {
-    // Bola(s) - mais rápida
     balls = [{
         x: WIDTH / 2,
         y: HEIGHT - 140,
         radius: 15,
-        dx: 3.8 * (Math.random() > 0.5 ? 1 : -1),
+        dx: 3.5 * (Math.random() > 0.5 ? 1 : -1),
         dy: -6,
         color: "#fff",
-        speed: 1.3,
+        speed: 1.5,
         trail: []
     }];
 
-    // Palhetas (flippers) em formato de cone
+    // Palhetas em cone metálico
     const flipperLength = 160;
     const flipperWidthBase = 38;
     const flipperWidthTip = 12;
@@ -42,37 +43,64 @@ function resetGame() {
         widthTip: flipperWidthTip
     };
 
-    // 7 obstáculos modernos e animados
-    bumpers = [
-        {x: WIDTH/2, y: 120, r: 28, color: "#ffeb3b", type: "normal"},
-        {x: WIDTH/2-100, y: 220, r: 22, color: "#00ffe7", type: "accelerator"},
-        {x: WIDTH/2+100, y: 220, r: 22, color: "#ff00ff", type: "multi"},
-        {x: WIDTH/2-60, y: 340, r: 24, color: "#00ff00", type: "labyrinth"},
-        {x: WIDTH/2+60, y: 340, r: 24, color: "#ff9800", type: "normal"},
-        {x: WIDTH/2-40, y: 500, r: 20, color: "#00bcd4", type: "normal"},
-        {x: WIDTH/2+40, y: 500, r: 20, color: "#e91e63", type: "normal"}
+    // Obstáculos espaciais (meio livre)
+    obstacles = [
+        {type: "spaceship", x: WIDTH/2-120, y: 120, size: 38, effect: "multi"}, // nave: multiplica bola
+        {type: "star", x: WIDTH/2+120, y: 120, size: 32, effect: "score"}, // estrela: muitos pontos
+        {type: "portal", x: WIDTH/2-80, y: 260, size: 36, effect: "portal"}, // portal: teleporta
+        {type: "asteroid", x: WIDTH/2+80, y: 260, size: 34, effect: "accelerate"}, // asteroide: acelera bola
+        {type: "hex", x: WIDTH/2-100, y: 420, size: 32, effect: "invert"}, // hexágono: inverte controles
+        {type: "slow", x: WIDTH/2+100, y: 420, size: 32, effect: "slow"}, // slow: bola lenta
+        {type: "planet", x: WIDTH/2, y: 600, size: 44, effect: "score"} // planeta: muitos pontos
     ];
 
     score = 0;
     gameOver = false;
+    controlsInverted = false;
+    if (invertTimeout) clearTimeout(invertTimeout);
     document.getElementById('score').textContent = "Pontos: 0";
     cancelAnimationFrame(animationId);
     loop();
 }
 
-// Controle das palhetas (robusto para A/a e L/l)
+// Controle das palhetas (A/a e L/l, com inversão)
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = true;
-    if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = true;
+    if (!controlsInverted) {
+        if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = true;
+        if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = true;
+    } else {
+        if (e.key === 'a' || e.key === 'A') rightFlipper.isUp = true;
+        if (e.key === 'l' || e.key === 'L') leftFlipper.isUp = true;
+    }
 });
 document.addEventListener('keyup', function(e) {
-    if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = false;
-    if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = false;
+    if (!controlsInverted) {
+        if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = false;
+        if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = false;
+    } else {
+        if (e.key === 'a' || e.key === 'A') rightFlipper.isUp = false;
+        if (e.key === 'l' || e.key === 'L') leftFlipper.isUp = false;
+    }
 });
 
 document.getElementById('restart-btn').onclick = resetGame;
 
 // --- Desenho ---
+
+function drawBackground() {
+    // Fundo estrelado
+    ctx.save();
+    for (let i = 0; i < 120; i++) {
+        let x = Math.random() * WIDTH;
+        let y = Math.random() * HEIGHT;
+        let r = Math.random() * 1.2;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(255,255,255,${0.15 + Math.random()*0.3})`;
+        ctx.fill();
+    }
+    ctx.restore();
+}
 
 function drawBall(ball) {
     // Rastro
@@ -128,7 +156,7 @@ function drawFlipper(f, isLeft) {
     ctx.restore();
 }
 
-// Função para desenhar palheta em formato de cone
+// Palheta cone
 function coneFlipper(ctx, x, y, length, widthBase, widthTip) {
     ctx.moveTo(x, y);
     ctx.lineTo(x + length, y + (widthTip - widthBase)/2);
@@ -137,64 +165,163 @@ function coneFlipper(ctx, x, y, length, widthBase, widthTip) {
     ctx.closePath();
 }
 
-function drawBumpers() {
-    bumpers.forEach(b => {
+// Obstáculos espaciais
+function drawObstacles() {
+    obstacles.forEach(ob => {
         ctx.save();
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
-        // Efeitos especiais
-        if (b.type === "accelerator") {
-            let grad = ctx.createRadialGradient(b.x, b.y, b.r*0.2, b.x, b.y, b.r);
-            grad.addColorStop(0, "#fff");
-            grad.addColorStop(0.5, "#00ffe7");
-            grad.addColorStop(1, "#00bcd4");
-            ctx.fillStyle = grad;
+        if (ob.type === "spaceship") {
+            // Nave triangular
+            ctx.translate(ob.x, ob.y);
+            ctx.rotate(-Math.PI/10);
+            ctx.beginPath();
+            ctx.moveTo(0, -ob.size/2);
+            ctx.lineTo(ob.size/2, ob.size/2);
+            ctx.lineTo(-ob.size/2, ob.size/2);
+            ctx.closePath();
+            ctx.fillStyle = "#fff";
             ctx.shadowColor = "#00ffe7";
-            ctx.shadowBlur = 24 + 8*Math.abs(Math.sin(accAnim));
-        } else if (b.type === "multi") {
-            let grad = ctx.createRadialGradient(b.x, b.y, b.r*0.2, b.x, b.y, b.r);
-            grad.addColorStop(0, "#fff");
-            grad.addColorStop(0.5, "#ff00ff");
-            grad.addColorStop(1, "#e040fb");
-            ctx.fillStyle = grad;
-            ctx.shadowColor = "#ff00ff";
-            ctx.shadowBlur = 18 + 8*Math.abs(Math.sin(multiAnim));
-        } else if (b.type === "labyrinth") {
-            let grad = ctx.createRadialGradient(b.x, b.y, b.r*0.2, b.x, b.y, b.r);
-            grad.addColorStop(0, "#fff");
-            grad.addColorStop(0.5, "#00ff00");
-            grad.addColorStop(1, "#388e3c");
-            ctx.fillStyle = grad;
-            ctx.shadowColor = "#00ff00";
-            ctx.shadowBlur = 18 + 8*Math.abs(Math.sin(labAnim));
-        } else {
-            ctx.fillStyle = b.color;
-            ctx.shadowColor = "#fff";
-            ctx.shadowBlur = 8;
-        }
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "#fff";
-        ctx.stroke();
-        ctx.closePath();
-
-        // Animação labirinto
-        if (b.type === "labyrinth") {
+            ctx.shadowBlur = 18;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "#00ffe7";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            // Janelas
+            ctx.beginPath();
+            ctx.arc(0, 0, ob.size/7, 0, Math.PI*2);
+            ctx.fillStyle = "#00ffe7";
+            ctx.globalAlpha = 0.7;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        } else if (ob.type === "star") {
+            // Estrela animada
             ctx.save();
-            ctx.globalAlpha = 0.5 + 0.3*Math.abs(Math.sin(labAnim));
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 2;
+            ctx.translate(ob.x, ob.y);
+            ctx.rotate(starAnim);
+            drawStar(ctx, 0, 0, ob.size/2, ob.size/4, 5);
+            ctx.fillStyle = "#ffeb3b";
+            ctx.shadowColor = "#fff";
+            ctx.shadowBlur = 18;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        } else if (ob.type === "portal") {
+            // Portal animado
+            ctx.save();
+            ctx.translate(ob.x, ob.y);
             ctx.beginPath();
             for (let i = 0; i < 3; i++) {
-                ctx.arc(b.x, b.y, b.r-4-i*4, 0, Math.PI*2);
+                ctx.arc(0, 0, ob.size/2 - i*5, 0, Math.PI*2);
             }
+            ctx.strokeStyle = `rgba(0,255,255,${0.5+0.3*Math.abs(Math.sin(portalAnim))})`;
+            ctx.lineWidth = 4;
+            ctx.shadowColor = "#00ffe7";
+            ctx.shadowBlur = 18;
             ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        } else if (ob.type === "asteroid") {
+            // Asteroide irregular
+            ctx.save();
+            ctx.translate(ob.x, ob.y);
+            ctx.rotate(asteroidAnim);
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                let angle = (Math.PI*2/8)*i;
+                let r = ob.size/2 + (i%2===0?6:-6);
+                ctx.lineTo(Math.cos(angle)*r, Math.sin(angle)*r);
+            }
+            ctx.closePath();
+            ctx.fillStyle = "#888";
+            ctx.shadowColor = "#fff";
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+        } else if (ob.type === "hex") {
+            // Hexágono
+            ctx.save();
+            ctx.translate(ob.x, ob.y);
+            ctx.rotate(invertAnim);
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                let angle = (Math.PI*2/6)*i;
+                ctx.lineTo(Math.cos(angle)*ob.size/2, Math.sin(angle)*ob.size/2);
+            }
+            ctx.closePath();
+            ctx.fillStyle = "#00bcd4";
+            ctx.shadowColor = "#fff";
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+        } else if (ob.type === "slow") {
+            // Slow: círculo com ondas
+            ctx.save();
+            ctx.translate(ob.x, ob.y);
+            ctx.beginPath();
+            ctx.arc(0, 0, ob.size/2, 0, Math.PI*2);
+            ctx.fillStyle = "#ff4081";
+            ctx.shadowColor = "#fff";
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Ondas
+            ctx.globalAlpha = 0.5 + 0.3*Math.abs(Math.sin(slowAnim));
+            ctx.beginPath();
+            ctx.arc(0, 0, ob.size/2+6, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        } else if (ob.type === "planet") {
+            // Planeta com anel
+            ctx.save();
+            ctx.translate(ob.x, ob.y);
+            ctx.beginPath();
+            ctx.arc(0, 0, ob.size/2, 0, Math.PI*2);
+            ctx.fillStyle = "#8bc34a";
+            ctx.shadowColor = "#fff";
+            ctx.shadowBlur = 12;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Anel
+            ctx.beginPath();
+            ctx.ellipse(0, 0, ob.size/2+8, ob.size/4, Math.PI/6, 0, Math.PI*2);
+            ctx.strokeStyle = "#fff";
+            ctx.globalAlpha = 0.5;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
             ctx.restore();
         }
         ctx.restore();
     });
 }
+
+// Estrela
+function drawStar(ctx, x, y, r, r2, n) {
+    ctx.beginPath();
+    for (let i = 0; i < 2*n+1; i++) {
+        let angle = i * Math.PI / n;
+        let rad = i%2===0 ? r : r2;
+        ctx.lineTo(x + Math.cos(angle)*rad, y + Math.sin(angle)*rad);
+    }
+    ctx.closePath();
+}
+
+// --- GAME LOGIC ---
 
 function drawScore() {
     document.getElementById('score').textContent = "Pontos: " + score;
@@ -226,22 +353,30 @@ function updateBalls() {
         if (ball.x - ball.radius < 0 || ball.x + ball.radius > WIDTH) ball.dx *= -1;
         if (ball.y - ball.radius < 0) ball.dy *= -1;
 
-        // Bumpers
-        bumpers.forEach(b => {
-            let dist = Math.hypot(ball.x - b.x, ball.y - b.y);
-            if (dist < ball.radius + b.r) {
+        // Obstáculos
+        obstacles.forEach(ob => {
+            let dist = Math.hypot(ball.x - ob.x, ball.y - ob.y);
+            let hit = false;
+            if (ob.type === "spaceship") {
+                // Triângulo nave
+                hit = pointInTriangle(ball.x, ball.y, ob.x, ob.y-ob.size/2, ob.x+ob.size/2, ob.y+ob.size/2, ob.x-ob.size/2, ob.y+ob.size/2, ball.radius);
+            } else if (ob.type === "star" || ob.type === "planet" || ob.type === "slow") {
+                hit = dist < ob.size/2 + ball.radius;
+            } else if (ob.type === "portal") {
+                hit = dist < ob.size/2 + ball.radius;
+            } else if (ob.type === "asteroid") {
+                hit = dist < ob.size/2 + ball.radius;
+            } else if (ob.type === "hex") {
+                hit = dist < ob.size/2 + ball.radius;
+            }
+            if (hit) {
                 // Rebater
-                let angle = Math.atan2(ball.y - b.y, ball.x - b.x);
+                let angle = Math.atan2(ball.y - ob.y, ball.x - ob.x);
                 ball.dx = Math.cos(angle) * Math.abs(ball.dx);
                 ball.dy = Math.sin(angle) * Math.abs(ball.dy);
 
-                // Efeitos especiais
-                if (b.type === "accelerator") {
-                    ball.speed = 2.5;
-                    score += 30;
-                    accAnim = 0;
-                    setTimeout(() => { ball.speed = 1.3; }, 2000);
-                } else if (b.type === "multi") {
+                // Efeitos únicos
+                if (ob.effect === "multi") {
                     if (balls.length < 3) {
                         balls.push({
                             x: ball.x + 20,
@@ -250,21 +385,33 @@ function updateBalls() {
                             dx: -ball.dx,
                             dy: ball.dy,
                             color: "#fff",
-                            speed: 1.3,
+                            speed: 1.5,
                             trail: []
                         });
                         score += 50;
-                        multiAnim = 0;
                     }
-                } else if (b.type === "labyrinth") {
+                } else if (ob.effect === "score") {
+                    score += 40;
+                } else if (ob.effect === "portal") {
                     // Teleporta para o outro lado
                     ball.x = WIDTH - ball.x;
                     ball.y = 100 + Math.random()*100;
                     ball.dx = -ball.dx;
                     ball.dy = Math.abs(ball.dy);
-                    score += 40;
-                    labAnim = 0;
-                } else {
+                    score += 30;
+                } else if (ob.effect === "accelerate") {
+                    ball.speed = 2.5;
+                    score += 20;
+                    setTimeout(() => { ball.speed = 1.5; }, 2000);
+                } else if (ob.effect === "invert") {
+                    controlsInverted = true;
+                    invertAnim = 0;
+                    if (invertTimeout) clearTimeout(invertTimeout);
+                    invertTimeout = setTimeout(() => { controlsInverted = false; }, 3000);
+                    score += 10;
+                } else if (ob.effect === "slow") {
+                    ball.speed = 0.7;
+                    setTimeout(() => { ball.speed = 1.5; }, 2000);
                     score += 10;
                 }
             }
@@ -278,6 +425,16 @@ function updateBalls() {
     // Fim de jogo se todas bolas caírem
     balls = balls.filter(ball => ball.y - ball.radius <= HEIGHT);
     if (balls.length === 0) gameOver = true;
+}
+
+// Triângulo nave
+function pointInTriangle(px, py, x1, y1, x2, y2, x3, y3, radius) {
+    // Borda circular
+    let areaOrig = Math.abs((x2-x1)*(y3-y1)-(x3-x1)*(y2-y1));
+    let area1 = Math.abs((x1-px)*(y2-py)-(x2-px)*(y1-py));
+    let area2 = Math.abs((x2-px)*(y3-py)-(x3-px)*(y2-py));
+    let area3 = Math.abs((x3-px)*(y1-py)-(x1-px)*(y3-py));
+    return (area1 + area2 + area3) <= areaOrig + radius*8;
 }
 
 function checkFlipperCollision(f, isLeft, ball) {
@@ -296,7 +453,8 @@ function checkFlipperCollision(f, isLeft, ball) {
 
 function draw() {
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
-    drawBumpers();
+    drawBackground();
+    drawObstacles();
     for (let ball of balls) drawBall(ball);
     drawFlipper(leftFlipper, true);
     drawFlipper(rightFlipper, false);
@@ -305,9 +463,11 @@ function draw() {
 }
 
 function loop() {
-    accAnim += 0.08;
-    multiAnim += 0.09;
-    labAnim += 0.07;
+    starAnim += 0.05;
+    portalAnim += 0.07;
+    invertAnim += 0.04;
+    asteroidAnim += 0.03;
+    slowAnim += 0.06;
     if (!gameOver) {
         updateBalls();
         draw();
