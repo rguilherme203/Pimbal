@@ -23,7 +23,7 @@ h1 {
 canvas {
     background: #181c2b;
     border: 6px solid #00ffe7;
-    border-radius: 28px;
+    border-radius: 38% / 12%;
     display: block;
     margin: 20px auto 0 auto;
     box-shadow: 0 0 60px #00ffe7a0, 0 0 30px #000a;
@@ -38,11 +38,16 @@ canvas {
 }
 
 #score {
-    font-size: 1.5em;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 2em;
     color: #00ffe7;
     font-weight: bold;
+    background: #111;
+    border-radius: 8px;
+    padding: 4px 18px;
+    letter-spacing: 2px;
+    box-shadow: 0 0 10px #00ffe7a0;
     text-shadow: 0 0 10px #00ffe7, 1px 1px 6px #000;
-    letter-spacing: 1px;
 }
 
 #restart-btn {
