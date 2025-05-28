@@ -4,28 +4,27 @@ const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 
 let balls, leftFlipper, rightFlipper, obstacles, score, gameOver, animationId;
-let starAnim = 0, portalAnim = 0, invertAnim = 0, asteroidAnim = 0;
-let controlsInverted = false, invertTimeout = null;
+let starAnim = 0, portalAnim = 0, asteroidAnim = 0;
 
 function resetGame() {
     balls = [{
         x: WIDTH / 2,
-        y: HEIGHT - 220, // MAIS ACIMA, NÃO SOBRE AS PALHETAS
-        radius: 15,
+        y: HEIGHT - 220,
+        radius: 13,
         dx: 3.5 * (Math.random() > 0.5 ? 1 : -1),
         dy: -6,
         color: "#fff",
-        speed: 1.5,
+        speed: 1.7,
         trail: []
     }];
 
-    // Palhetas menores, cone (base larga, ponta fina)
-    const flipperLength = 90;
-    const flipperWidthBase = 28;
-    const flipperWidthTip = 7;
+    // Palhetas grandes, finas, cone clássico
+    const flipperLength = 130;
+    const flipperWidthBase = 22;
+    const flipperWidthTip = 4;
     const flipperY = HEIGHT - 60;
     leftFlipper = {
-        x: WIDTH / 2 - 60,
+        x: WIDTH / 2 - 70,
         y: flipperY,
         angle: -30,
         isUp: false,
@@ -34,7 +33,7 @@ function resetGame() {
         widthTip: flipperWidthTip
     };
     rightFlipper = {
-        x: WIDTH / 2 + 60,
+        x: WIDTH / 2 + 70,
         y: flipperY,
         angle: 30,
         isUp: false,
@@ -43,44 +42,31 @@ function resetGame() {
         widthTip: flipperWidthTip
     };
 
-    // Obstáculos espaciais distribuídos e sem efeito de slow
+    // Obstáculos variados, afastados das palhetas e do centro
     obstacles = [
-        {type: "spaceship", x: WIDTH/2-120, y: 110, size: 38, effect: "multi"}, // nave: multiplica bola
-        {type: "star", x: WIDTH/2+100, y: 170, size: 32, effect: "score"}, // estrela: muitos pontos
-        {type: "portal", x: WIDTH/2-80, y: 300, size: 36, effect: "portal"}, // portal: teleporta
-        {type: "asteroid", x: WIDTH/2+80, y: 400, size: 34, effect: "accelerate"}, // asteroide: acelera bola
-        {type: "hex", x: WIDTH/2-100, y: 500, size: 32, effect: "invert"}, // hexágono: inverte controles
-        {type: "planet", x: WIDTH/2+100, y: 600, size: 44, effect: "score"}, // planeta: muitos pontos
-        {type: "star", x: WIDTH/2-60, y: 600, size: 28, effect: "score"} // estrela extra
+        {type: "hex", x: WIDTH/2-120, y: 120, size: 36, effect: "score"},
+        {type: "star", x: WIDTH/2+120, y: 120, size: 32, effect: "score"},
+        {type: "portal", x: WIDTH/2-80, y: 260, size: 36, effect: "portal"},
+        {type: "asteroid", x: WIDTH/2+80, y: 340, size: 34, effect: "accelerate"},
+        {type: "planet", x: WIDTH/2-100, y: 440, size: 44, effect: "score"},
+        {type: "spaceship", x: WIDTH/2+100, y: 540, size: 38, effect: "multi"}
     ];
 
     score = 0;
     gameOver = false;
-    controlsInverted = false;
-    if (invertTimeout) clearTimeout(invertTimeout);
     document.getElementById('score').textContent = "Pontos: 0";
     cancelAnimationFrame(animationId);
     loop();
 }
 
-// Controle das palhetas (A/a e L/l, com inversão)
+// Controle das palhetas (A/a e L/l)
 document.addEventListener('keydown', function(e) {
-    if (!controlsInverted) {
-        if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = true;
-        if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = true;
-    } else {
-        if (e.key === 'a' || e.key === 'A') rightFlipper.isUp = true;
-        if (e.key === 'l' || e.key === 'L') leftFlipper.isUp = true;
-    }
+    if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = true;
+    if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = true;
 });
 document.addEventListener('keyup', function(e) {
-    if (!controlsInverted) {
-        if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = false;
-        if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = false;
-    } else {
-        if (e.key === 'a' || e.key === 'A') rightFlipper.isUp = false;
-        if (e.key === 'l' || e.key === 'L') leftFlipper.isUp = false;
-    }
+    if (e.key === 'a' || e.key === 'A') leftFlipper.isUp = false;
+    if (e.key === 'l' || e.key === 'L') rightFlipper.isUp = false;
 });
 
 document.getElementById('restart-btn').onclick = resetGame;
@@ -141,13 +127,13 @@ function drawFlipper(f, isLeft) {
 
     ctx.fillStyle = grad;
     ctx.strokeStyle = "#00ffe7";
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     coneFlipper(ctx, -f.length/2, -f.widthBase/2, f.length, f.widthBase, f.widthTip);
     ctx.fill();
     ctx.stroke();
     // Reflexo
-    ctx.globalAlpha = 0.25;
+    ctx.globalAlpha = 0.18;
     ctx.beginPath();
     coneFlipper(ctx, -f.length/2+4, -f.widthBase/2+2, f.length-8, f.widthBase-4, f.widthTip-2);
     ctx.fillStyle = "#fff";
@@ -169,30 +155,24 @@ function coneFlipper(ctx, x, y, length, widthBase, widthTip) {
 function drawObstacles() {
     obstacles.forEach(ob => {
         ctx.save();
-        if (ob.type === "spaceship") {
-            // Nave triangular
+        if (ob.type === "hex") {
+            // Hexágono
             ctx.translate(ob.x, ob.y);
-            ctx.rotate(-Math.PI/10);
+            ctx.rotate(starAnim/2);
             ctx.beginPath();
-            ctx.moveTo(0, -ob.size/2);
-            ctx.lineTo(ob.size/2, ob.size/2);
-            ctx.lineTo(-ob.size/2, ob.size/2);
+            for (let i = 0; i < 6; i++) {
+                let angle = (Math.PI*2/6)*i;
+                ctx.lineTo(Math.cos(angle)*ob.size/2, Math.sin(angle)*ob.size/2);
+            }
             ctx.closePath();
-            ctx.fillStyle = "#fff";
-            ctx.shadowColor = "#00ffe7";
-            ctx.shadowBlur = 18;
+            ctx.fillStyle = "#00bcd4";
+            ctx.shadowColor = "#fff";
+            ctx.shadowBlur = 10;
             ctx.fill();
             ctx.shadowBlur = 0;
-            ctx.strokeStyle = "#00ffe7";
-            ctx.lineWidth = 3;
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
             ctx.stroke();
-            // Janelas
-            ctx.beginPath();
-            ctx.arc(0, 0, ob.size/7, 0, Math.PI*2);
-            ctx.fillStyle = "#00ffe7";
-            ctx.globalAlpha = 0.7;
-            ctx.fill();
-            ctx.globalAlpha = 1;
             ctx.restore();
         } else if (ob.type === "star") {
             // Estrela animada
@@ -242,26 +222,6 @@ function drawObstacles() {
             ctx.lineWidth = 2;
             ctx.stroke();
             ctx.restore();
-        } else if (ob.type === "hex") {
-            // Hexágono
-            ctx.save();
-            ctx.translate(ob.x, ob.y);
-            ctx.rotate(invertAnim);
-            ctx.beginPath();
-            for (let i = 0; i < 6; i++) {
-                let angle = (Math.PI*2/6)*i;
-                ctx.lineTo(Math.cos(angle)*ob.size/2, Math.sin(angle)*ob.size/2);
-            }
-            ctx.closePath();
-            ctx.fillStyle = "#00bcd4";
-            ctx.shadowColor = "#fff";
-            ctx.shadowBlur = 10;
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.restore();
         } else if (ob.type === "planet") {
             // Planeta com anel
             ctx.save();
@@ -282,6 +242,31 @@ function drawObstacles() {
             ctx.strokeStyle = "#fff";
             ctx.globalAlpha = 0.5;
             ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        } else if (ob.type === "spaceship") {
+            // Nave triangular
+            ctx.translate(ob.x, ob.y);
+            ctx.rotate(-Math.PI/10);
+            ctx.beginPath();
+            ctx.moveTo(0, -ob.size/2);
+            ctx.lineTo(ob.size/2, ob.size/2);
+            ctx.lineTo(-ob.size/2, ob.size/2);
+            ctx.closePath();
+            ctx.fillStyle = "#fff";
+            ctx.shadowColor = "#00ffe7";
+            ctx.shadowBlur = 18;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "#00ffe7";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            // Janelas
+            ctx.beginPath();
+            ctx.arc(0, 0, ob.size/7, 0, Math.PI*2);
+            ctx.fillStyle = "#00ffe7";
+            ctx.globalAlpha = 0.7;
+            ctx.fill();
             ctx.globalAlpha = 1;
             ctx.restore();
         }
@@ -339,13 +324,11 @@ function updateBalls() {
             if (ob.type === "spaceship") {
                 // Triângulo nave
                 hit = pointInTriangle(ball.x, ball.y, ob.x, ob.y-ob.size/2, ob.x+ob.size/2, ob.y+ob.size/2, ob.x-ob.size/2, ob.y+ob.size/2, ball.radius);
-            } else if (ob.type === "star" || ob.type === "planet") {
+            } else if (ob.type === "star" || ob.type === "planet" || ob.type === "hex") {
                 hit = dist < ob.size/2 + ball.radius;
             } else if (ob.type === "portal") {
                 hit = dist < ob.size/2 + ball.radius;
             } else if (ob.type === "asteroid") {
-                hit = dist < ob.size/2 + ball.radius;
-            } else if (ob.type === "hex") {
                 hit = dist < ob.size/2 + ball.radius;
             }
             if (hit) {
@@ -364,7 +347,7 @@ function updateBalls() {
                             dx: -ball.dx,
                             dy: ball.dy,
                             color: "#fff",
-                            speed: 1.5,
+                            speed: 1.7,
                             trail: []
                         });
                         score += 50;
@@ -381,13 +364,7 @@ function updateBalls() {
                 } else if (ob.effect === "accelerate") {
                     ball.speed = 2.5;
                     score += 20;
-                    setTimeout(() => { ball.speed = 1.5; }, 2000);
-                } else if (ob.effect === "invert") {
-                    controlsInverted = true;
-                    invertAnim = 0;
-                    if (invertTimeout) clearTimeout(invertTimeout);
-                    invertTimeout = setTimeout(() => { controlsInverted = false; }, 3000);
-                    score += 10;
+                    setTimeout(() => { ball.speed = 1.7; }, 2000);
                 }
             }
         });
@@ -440,7 +417,6 @@ function draw() {
 function loop() {
     starAnim += 0.05;
     portalAnim += 0.07;
-    invertAnim += 0.04;
     asteroidAnim += 0.03;
     if (!gameOver) {
         updateBalls();
