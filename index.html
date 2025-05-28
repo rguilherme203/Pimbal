@@ -2,20 +2,21 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Protótipo Dave the Diver</title>
+  <title>Plataformer Aventura</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Protótipo Dave the Diver</h1>
+  <h1>Plataformer Aventura</h1>
   <div class="game-area">
-    <canvas id="game" width="480" height="720"></canvas>
+    <canvas id="game" width="800" height="480"></canvas>
     <div class="hud">
-      <span id="score">Peixes: 0</span>
-      <span id="oxygen">O2: 100%</span>
+      <span id="lives">Vidas: 3</span>
+      <span id="level">Nível: 1</span>
+      <span id="item">Item: Nenhum</span>
       <button id="restart-btn">Reiniciar</button>
     </div>
   </div>
-  <p>Setas para mover, Espaço para subir rápido. Pegue peixes e evite águas-vivas!</p>
+  <p>Setas: mover | A: pular | S: atirar | D: ação especial (mochila-jato/carro)</p>
   <script src="script.js"></script>
 </body>
 </html>
