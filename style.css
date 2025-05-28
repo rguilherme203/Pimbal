@@ -1,19 +1,67 @@
 body {
-    background: #222;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     color: #fff;
     text-align: center;
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Arial, sans-serif;
 }
 
 h1 {
     margin-top: 20px;
     color: #ffeb3b;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 8px #000;
+}
+
+.game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto 20px auto;
 }
 
 canvas {
-    background: #222;
-    border: 4px solid #ffeb3b;
-    border-radius: 12px;
+    background: radial-gradient(ellipse at center, #23235b 0%, #0f1021 100%);
+    border: 5px solid #ffeb3b;
+    border-radius: 18px;
     display: block;
-    margin: 20px auto;
+    margin: 20px auto 0 auto;
+    box-shadow: 0 0 30px #000a;
+}
+
+.score-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    margin-top: 10px;
+}
+
+#score {
+    font-size: 1.3em;
+    color: #ffeb3b;
+    font-weight: bold;
+    text-shadow: 1px 1px 6px #000;
+}
+
+#restart-btn {
+    background: #ff4081;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 8px #0005;
+    transition: background 0.2s;
+}
+#restart-btn:hover {
+    background: #e91e63;
+}
+
+p {
+    margin-top: 10px;
+    color: #ffeb3b;
+    font-size: 1.1em;
+    text-shadow: 1px 1px 6px #000;
 }
