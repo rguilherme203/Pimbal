@@ -2,8 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Plataformer Realista</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plataformer Dave Style</title>
+  <meta name="viewport" content="width=900, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     canvas { background: #1e293b; display: block; margin: 0 auto; border-radius: 16px; box-shadow: 0 8px 32px #000a; }
@@ -14,14 +14,15 @@
   </style>
 </head>
 <body class="bg-gradient-to-b from-blue-900 to-gray-900 min-h-screen flex flex-col items-center">
-  <h1 class="text-2xl text-white font-bold mt-6 mb-2">Plataformer Realista</h1>
+  <h1 class="text-2xl text-white font-bold mt-6 mb-2">Plataformer Dave Style</h1>
   <div class="hud flex gap-6 text-white text-lg mb-2">
     <span id="hud-lives">❤️ 3</span>
     <span id="hud-coins">🪙 0</span>
+    <span id="hud-keys">🔑 0</span>
     <span id="hud-level">Fase 1</span>
   </div>
-  <canvas id="game" width="800" height="480"></canvas>
-  <div class="text-white mt-2 text-sm">Controles: ← → ou A/D para andar, ↑ ou W para pular, ↓ ou S para descer escada, Espaço para atacar</div>
+  <canvas id="game" width="900" height="540"></canvas>
+  <div class="text-white mt-2 text-sm">Controles: ← → ou A/D para andar, ↑ ou W para pular, ↓ ou S para descer escada, Espaço para ação</div>
   <div id="msg" class="text-yellow-200 text-lg mt-2"></div>
   <div class="mobile-controls">
     <button id="btn-left">⟵</button>
@@ -36,134 +37,103 @@
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     const GRAVITY = 0.7, JUMP = -13, SPEED = 4, LADDER_SPEED = 2.5;
-    const BLOCK = 40, PLAYER_W = 28, PLAYER_H = 48;
-    const CAMERA_MARGIN_X = 200, CAMERA_MARGIN_Y = 120;
+    const BLOCK = 40, PLAYER_W = 32, PLAYER_H = 54;
+    const CAMERA_MARGIN_X = 250, CAMERA_MARGIN_Y = 120;
     const COLORS = {
       bg: "#1e293b", block: "#64748b", ladder: "#fbbf24", water: "#38bdf8", trap: "#ef4444",
-      coin: "#fde047", enemy: "#f87171", boss: "#a21caf", player: "#facc15", arm: "#fbbf24", leg: "#fbbf24"
+      coin: "#fde047", enemy: "#f87171", boss: "#a21caf", player: "#facc15", arm: "#fbbf24", leg: "#fbbf24",
+      door: "#a3e635", key: "#f59e42", heart: "#ef4444"
     };
 
-    // --- Fases ---
-    const levels = [
-      // Fase 1: tutorial vertical
-      {
-        map: [
-          "................................",
-          "................................",
-          ".............C.................E",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          "#########L#######~~~~~#######B##",
-          "................................",
-          ".............C.................E",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          "#########L#######~~~~~#######B##"
-        ],
-        msg: "Pegue as moedas, suba as escadas, evite a água e derrote o chefão!",
-        boss: true
-      },
-      // Fase 2: mais armadilhas e tuneis
-      {
-        map: [
-          "................................",
-          "................................",
-          ".............C.................E",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          "#######L#######~^~#######B#####",
-          "................................",
-          ".............C.................E",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          ".............#.................#",
-          "#########L#######~~~~~#######B##"
-        ],
-        msg: "Cuidado com as armadilhas e tuneis! Derrote o chefão!",
-        boss: true
-      }
-    ];
+    // --- Mapa com múltiplas salas/etapas ---
+    const level = {
+      map: [
+        // 0         10        20        30        40        50        60        70
+        "....................................................................................",
+        "....................................................................................",
+        "....................................................................................",
+        ".............C.................E.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        "#########L#######~~~~~#######B##.............#.............#.............#..........",
+        "....................................................................................",
+        ".............C.................E.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        "#########L#######~~~~~#######B##.............#.............#.............#..........",
+        "....................................................................................",
+        ".............K.................D.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        ".............#.................#.............#.............#.............#..........",
+        "#########L#######~~~~~#######B##.............#.............#.............#.........."
+      ],
+      msg: "Explore, colete moedas, pegue a chave, abra a porta e derrote o chefão!"
+    };
 
     // --- Estado do jogo ---
     let state = {
-      level: 0,
       lives: 3,
       coins: 0,
+      keys: 0,
       msg: "",
       won: false,
       lost: false
     };
 
     // --- Objetos do jogo ---
-    let player, enemies, boss, coins, ladders, blocks, waters, traps;
+    let player, enemies, boss, coins, ladders, blocks, waters, traps, doors, keysObj;
     let camera = {x: 0, y: 0};
 
     // --- Inicialização ---
-    function startLevel(n) {
-      state.level = n;
-      state.msg = levels[n].msg;
+    function startLevel() {
+      state.msg = level.msg;
       state.won = false;
       state.lost = false;
+      state.keys = 0;
       // Parse mapa
-      blocks = [], ladders = [], waters = [], traps = [], coins = [], enemies = [];
+      blocks = [], ladders = [], waters = [], traps = [], coins = [], enemies = [], doors = [], keysObj = [];
       boss = null;
-      const map = levels[n].map;
+      const map = level.map;
       for (let y = 0; y < map.length; y++) {
         for (let x = 0; x < map[y].length; x++) {
           const c = map[y][x];
@@ -174,7 +144,9 @@
           if (c === "^") traps.push({x: px, y: py, anim: 0});
           if (c === "C") coins.push({x: px + BLOCK/2, y: py + BLOCK/2, taken: false, anim: 0});
           if (c === "E") enemies.push({x: px, y: py, dir: 1, alive: true, patrol: [px-40, px+80], ai: 0});
-          if (c === "B") boss = {x: px, y: py, hp: 5, alive: true, attackT: 0, proj: []};
+          if (c === "B") boss = {x: px, y: py, hp: 7, alive: true, attackT: 0, proj: []};
+          if (c === "D") doors.push({x: px, y: py, open: false});
+          if (c === "K") keysObj.push({x: px + BLOCK/2, y: py + BLOCK/2, taken: false, anim: 0});
         }
       }
       // Player
@@ -226,9 +198,9 @@
 
       // Limites do cenário
       if (player.x < 0) player.x = 0;
-      if (player.x > levels[state.level].map[0].length*BLOCK - PLAYER_W) player.x = levels[state.level].map[0].length*BLOCK - PLAYER_W;
-      if (player.y > levels[state.level].map.length*BLOCK - PLAYER_H) {
-        player.y = levels[state.level].map.length*BLOCK - PLAYER_H;
+      if (player.x > level.map[0].length*BLOCK - PLAYER_W) player.x = level.map[0].length*BLOCK - PLAYER_W;
+      if (player.y > level.map.length*BLOCK - PLAYER_H) {
+        player.y = level.map.length*BLOCK - PLAYER_H;
         player.vy = 0;
         player.onGround = true;
       }
@@ -257,6 +229,19 @@
         }
       }
 
+      // Portas
+      for (let d of doors) {
+        if (!d.open && rectsCollide(player, d, PLAYER_W, PLAYER_H, BLOCK, BLOCK)) {
+          if (state.keys > 0 && keys.attack) {
+            d.open = true;
+            state.keys--;
+            state.msg = "Porta aberta!";
+          } else if (!d.open) {
+            state.msg = "Precisa de uma chave!";
+          }
+        }
+      }
+
       // Água
       let inWater = waters.some(w => rectsCollide(player, w, PLAYER_W, PLAYER_H, BLOCK, BLOCK));
       if (inWater) {
@@ -272,7 +257,7 @@
           state.lives--;
           state.msg = "Você caiu numa armadilha!";
           if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
-          else startLevel(state.level);
+          else startLevel();
           return;
         }
       }
@@ -284,6 +269,16 @@
           c.taken = true;
           state.coins++;
           state.msg = "Moeda coletada!";
+        }
+      }
+
+      // Chaves
+      for (let k of keysObj) {
+        k.anim += 0.1;
+        if (!k.taken && Math.abs(player.x + PLAYER_W/2 - k.x) < 24 && Math.abs(player.y + PLAYER_H/2 - k.y) < 24) {
+          k.taken = true;
+          state.keys++;
+          state.msg = "Chave coletada!";
         }
       }
 
@@ -304,7 +299,7 @@
           state.lives--;
           state.msg = "Você foi atingido por um inimigo!";
           if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
-          else startLevel(state.level);
+          else startLevel();
           return;
         }
       }
@@ -324,26 +319,21 @@
             state.lives--;
             state.msg = "O chefão te acertou!";
             if (state.lives <= 0) { state.lost = true; state.msg = "Game Over!"; }
-            else startLevel(state.level);
+            else startLevel();
             return;
           }
         }
-        boss.proj = boss.proj.filter(p => p.x > 0 && p.x < levels[state.level].map[0].length*BLOCK && p.y > 0 && p.y < levels[state.level].map.length*BLOCK);
+        boss.proj = boss.proj.filter(p => p.x > 0 && p.x < level.map[0].length*BLOCK && p.y > 0 && p.y < level.map.length*BLOCK);
         // Atacar boss
         if (player.attacking && Math.abs(player.x - boss.x) < 60 && Math.abs(player.y - boss.y) < 60) {
           boss.hp--;
           state.msg = "Você acertou o chefão!";
           if (boss.hp <= 0) {
             boss.alive = false;
-            state.msg = "Chefão derrotado!";
+            state.msg = "Chefão derrotado! Parabéns!";
             setTimeout(() => {
-              if (state.level < levels.length - 1) {
-                startLevel(state.level + 1);
-                state.msg = "Fase seguinte!";
-              } else {
-                state.won = true;
-                state.msg = "Parabéns! Você zerou!";
-              }
+              state.won = true;
+              state.msg = "Parabéns! Você zerou!";
             }, 1200);
           }
         }
@@ -357,8 +347,8 @@
       player.animT++;
 
       // Câmera segue player
-      camera.x = Math.max(0, Math.min(player.x - W/2 + PLAYER_W/2, levels[state.level].map[0].length*BLOCK - W));
-      camera.y = Math.max(0, Math.min(player.y - H/2 + PLAYER_H/2, levels[state.level].map.length*BLOCK - H));
+      camera.x = Math.max(0, Math.min(player.x - W/2 + PLAYER_W/2, level.map[0].length*BLOCK - W));
+      camera.y = Math.max(0, Math.min(player.y - H/2 + PLAYER_H/2, level.map.length*BLOCK - H));
     }
 
     // --- Renderização ---
@@ -417,14 +407,38 @@
           ctx.restore();
         }
       }
+      // Chaves
+      for (let k of keysObj) {
+        if (!k.taken) {
+          ctx.save();
+          ctx.translate(k.x - camera.x, k.y - camera.y - Math.sin(k.anim)*6);
+          ctx.rotate(Math.sin(k.anim)*0.2);
+          ctx.fillStyle = COLORS.key;
+          ctx.beginPath();
+          ctx.arc(0, 0, 10, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.fillRect(0, -2, 16, 4);
+          ctx.restore();
+        }
+      }
+      // Portas
+      for (let d of doors) {
+        ctx.save();
+        ctx.translate(d.x - camera.x, d.y - camera.y);
+        ctx.fillStyle = d.open ? "#a3e635" : "#444";
+        ctx.fillRect(0, 0, BLOCK, BLOCK*2);
+        ctx.strokeStyle = "#fff";
+        ctx.strokeRect(0, 0, BLOCK, BLOCK*2);
+        ctx.restore();
+      }
       // Inimigos
       for (let e of enemies) {
         if (!e.alive) continue;
-        drawStickman(e.x + 6 - camera.x, e.y + BLOCK - 2 - camera.y, "enemy");
+        drawDaveMan(e.x + 16 - camera.x, e.y + BLOCK - 2 - camera.y, "enemy", 0, e.dir, false, 0, true);
       }
       // Boss
       if (boss && boss.alive) {
-        drawStickman(boss.x + 10 - camera.x, boss.y + BLOCK - 2 - camera.y, "boss", boss.hp);
+        drawDaveMan(boss.x + 16 - camera.x, boss.y + BLOCK - 2 - camera.y, "boss", boss.hp, 1, false, 0, true);
         // Projéteis
         for (let p of boss.proj) {
           ctx.beginPath();
@@ -436,59 +450,77 @@
         }
       }
       // Player
-      drawStickman(player.x + PLAYER_W/2 - camera.x, player.y + PLAYER_H - camera.y, "player", 0, player.facing, player.attacking, player.animT);
+      drawDaveMan(player.x + PLAYER_W/2 - camera.x, player.y + PLAYER_H - camera.y, "player", 0, player.facing, player.attacking, player.animT);
 
       // HUD
       document.getElementById('hud-lives').textContent = "❤️ " + state.lives;
       document.getElementById('hud-coins').textContent = "🪙 " + state.coins;
-      document.getElementById('hud-level').textContent = "Fase " + (state.level + 1);
+      document.getElementById('hud-keys').textContent = "🔑 " + state.keys;
+      document.getElementById('hud-level').textContent = "Fase 1";
       document.getElementById('msg').textContent = state.msg || "";
     }
 
-    // --- Desenhar boneco realista (stickman cartoon) ---
-    function drawStickman(x, y, type, hp = 0, facing = 1, attacking = false, animT = 0) {
+    // --- Desenhar personagem cartoon (estilo Dave) ---
+    function drawDaveMan(x, y, type, hp = 0, facing = 1, attacking = false, animT = 0, enemy = false) {
       ctx.save();
       ctx.translate(x, y);
-      // Corpo
-      ctx.strokeStyle = COLORS[type];
-      ctx.lineWidth = 5;
       // Pernas
+      ctx.strokeStyle = "#b45309";
+      ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(-8, 24 + Math.sin(animT/4)*2);
-      ctx.moveTo(0, 0);
-      ctx.lineTo(8, 24 + Math.cos(animT/4)*2);
+      ctx.moveTo(-6, 0);
+      ctx.lineTo(-10, 22 + Math.sin(animT/4)*2);
+      ctx.moveTo(6, 0);
+      ctx.lineTo(10, 22 + Math.cos(animT/4)*2);
       ctx.stroke();
       // Tronco
+      ctx.strokeStyle = type === "player" ? "#facc15" : (type === "boss" ? "#a21caf" : "#f87171");
+      ctx.lineWidth = 10;
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(0, -28);
       ctx.stroke();
       // Braços
-      ctx.strokeStyle = COLORS.arm;
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#fbbf24";
+      ctx.lineWidth = 7;
       ctx.beginPath();
       ctx.moveTo(0, -18);
-      ctx.lineTo(-14 * facing, -18 + Math.sin(animT/6)*6);
+      ctx.lineTo(-18 * facing, -18 + Math.sin(animT/6)*6);
       ctx.moveTo(0, -18);
-      ctx.lineTo(14 * facing, -18 + Math.cos(animT/6)*6);
+      ctx.lineTo(18 * facing, -18 + Math.cos(animT/6)*6);
       ctx.stroke();
       // Ataque
       if (attacking) {
         ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 8;
         ctx.beginPath();
         ctx.moveTo(0, -18);
-        ctx.lineTo(24 * facing, -18);
+        ctx.lineTo(32 * facing, -18);
         ctx.stroke();
       }
       // Cabeça
       ctx.beginPath();
-      ctx.arc(0, -36, 10, 0, 2 * Math.PI);
-      ctx.fillStyle = COLORS[type];
+      ctx.arc(0, -36, 14, 0, 2 * Math.PI);
+      ctx.fillStyle = "#fde68a";
       ctx.fill();
       ctx.strokeStyle = "#fff";
       ctx.stroke();
+      // Rosto
+      ctx.save();
+      ctx.translate(0, -36);
+      ctx.beginPath();
+      ctx.arc(4*facing, 2, 2, 0, 2*Math.PI);
+      ctx.fillStyle = "#222";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(-4*facing, 2, 2, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, 7, 5, Math.PI*0.1, Math.PI*0.9);
+      ctx.strokeStyle = "#a16207";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
       // HP boss
       if (type === "boss" && hp > 0) {
         ctx.fillStyle = "#fff";
@@ -510,9 +542,10 @@
           player.attacking = true;
           player.attackT = 15;
         }
+        keys.attack = true;
       }
       if (e.code === "KeyR" && (state.lost || state.won)) {
-        state.lives = 3; state.coins = 0; startLevel(0);
+        state.lives = 3; state.coins = 0; startLevel();
       }
       if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") keys.jump = true;
     });
@@ -521,6 +554,7 @@
       if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = false;
       if (e.code === "ArrowUp" || e.code === "KeyW") keys.up = false;
       if (e.code === "ArrowDown" || e.code === "KeyS") keys.down = false;
+      if (e.code === "Space") keys.attack = false;
       if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") keys.jump = false;
     });
 
@@ -542,7 +576,8 @@
         player.attacking = true;
         player.attackT = 15;
       }
-    }, ()=>{});
+      keys.attack = true;
+    }, ()=>{keys.attack=false;});
 
     // --- Loop principal ---
     function loop() {
@@ -552,7 +587,7 @@
     }
 
     // --- Iniciar ---
-    startLevel(0);
+    startLevel();
     loop();
   </script>
 </body>
