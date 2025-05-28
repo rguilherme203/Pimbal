@@ -2,12 +2,18 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Pinball Simples</title>
+    <title>Pinball Moderno</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Jogo de Pinball</h1>
-    <canvas id="pinball" width="400" height="600"></canvas>
+    <h1>Pinball Moderno</h1>
+    <div class="game-area">
+        <canvas id="pinball" width="400" height="600"></canvas>
+        <div class="score-area">
+            <span id="score">Pontos: 0</span>
+            <button id="restart-btn">Reiniciar</button>
+        </div>
+    </div>
     <p>Use <b>A</b> (esquerda) e <b>L</b> (direita) para controlar as palhetas.</p>
     <script src="script.js"></script>
 </body>
