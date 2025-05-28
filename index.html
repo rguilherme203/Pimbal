@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Pinball Espacial Clássico</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Protótipo Dave the Diver</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Pinball Espacial</h1>
-    <div class="game-area">
-        <canvas id="pinball" width="420" height="700"></canvas>
-        <div class="score-area">
-            <span id="score">0000000</span>
-            <button id="restart-btn">Reiniciar</button>
-        </div>
+  <h1>Protótipo Dave the Diver</h1>
+  <div class="game-area">
+    <canvas id="game" width="480" height="720"></canvas>
+    <div class="hud">
+      <span id="score">Peixes: 0</span>
+      <span id="oxygen">O2: 100%</span>
+      <button id="restart-btn">Reiniciar</button>
     </div>
-    <p>Use <b>A</b> (esquerda) e <b>L</b> (direita) para controlar as palhetas.</p>
-    <script src="script.js"></script>
+  </div>
+  <p>Setas para mover, Espaço para subir rápido. Pegue peixes e evite águas-vivas!</p>
+  <script src="script.js"></script>
 </body>
 </html>
