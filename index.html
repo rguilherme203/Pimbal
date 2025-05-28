@@ -2,446 +2,180 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Plataformer Física Real</title>
-  <meta name="viewport" content="width=900, initial-scale=1.0">
+  <title>Plataformer Tileset Demo</title>
   <style>
-    body {
-      background: linear-gradient(to bottom, #23235b 0%, #0f1021 100%);
-      color: #fff;
-      text-align: center;
-      font-family: 'Segoe UI', Arial, sans-serif;
-    }
-    #hud {
-      margin: 10px auto 0 auto;
-      width: 900px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 1.2em;
-      color: #00ffe7;
-      font-weight: bold;
-      text-shadow: 0 0 10px #00ffe7, 1px 1px 6px #000;
-      letter-spacing: 1px;
-    }
-    #shop {
-      position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.8);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-    }
-    #shop .box {
-      background: #181c2b;
-      border: 4px solid #00ffe7;
-      border-radius: 16px;
-      box-shadow: 0 0 30px #00ffe7a0;
-      color: #fff;
-      width: 340px;
-      margin: 30px auto;
-      padding: 18px 0 24px 0;
-      text-align: center;
-    }
-    #shop button {
-      margin: 8px 8px 0 8px;
-      padding: 8px 18px;
-      border-radius: 8px;
-      border: none;
-      background: #00bcd4;
-      color: #fff;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 1em;
-    }
-    #shop button:hover { background: #00ffe7; color: #222; }
+    body { background: #222; color: #fff; text-align: center; }
+    #hud { margin: 10px auto; width: 640px; display: flex; justify-content: space-between; }
+    canvas { background: #222; border: 4px solid #00ffe7; border-radius: 12px; }
   </style>
 </head>
 <body>
-  <h1>Plataformer Física Real</h1>
+  <h1>Plataformer Tileset Demo</h1>
   <div id="hud">
-    <span id="lives">Vidas: 3</span>
+    <span id="lives">❤️❤️❤️</span>
     <span id="coins">Moedas: 0</span>
-    <span id="weapon">Arma: Pistola</span>
-    <span id="item">Apetrecho: Nenhum</span>
-    <span id="level">Nível: 1</span>
-    <span id="special">Especial: Pronto</span>
-    <button onclick="openShop()">Loja</button>
+    <span id="level">Fase: 1</span>
   </div>
-  <canvas id="game" width="900" height="500"></canvas>
-  <div id="shop">
-    <div class="box">
-      <h2>Loja do Jogo</h2>
-      <p>Moedas: <span id="shop-coins">0</span></p>
-      <button onclick="buy('arma')">Comprar Metralhadora (10 moedas)</button><br>
-      <button onclick="buy('jetpack')">Comprar Jetpack (8 moedas)</button><br>
-      <button onclick="buy('vida')">Comprar Vida (5 moedas)</button><br>
-      <button onclick="closeShop()">Fechar Loja</button>
-    </div>
-  </div>
-  <p>Setas: mover | A: pular | S: atirar | D: especial (cachorro)</p>
+  <canvas id="game" width="640" height="384"></canvas>
+  <p>Setas: mover | A: pular</p>
   <script>
-    // --- Variáveis principais ---
+    // --- Sprites (use imagens reais para produção) ---
+    const tileSize = 32;
+    const playerSprite = new Image();
+    playerSprite.src = "https://opengameart.org/sites/default/files/hero_0.png";
+    const enemySprite = new Image();
+    enemySprite.src = "https://opengameart.org/sites/default/files/robot_0.png";
+    const coinSprite = new Image();
+    coinSprite.src = "https://opengameart.org/sites/default/files/coin_gold.png";
+
+    // --- Mapas (0: vazio, 1: chão, 2: água, 3: espinho, 4: moeda, 5: inimigo) ---
+    const maps = [
+      [
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      ],
+      [
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      ]
+    ];
+
+    // --- Estado do jogo ---
+    let level = 0, lives = 3, coins = 0;
+    let player = {x: 2, y: 7, vx: 0, vy: 0, onGround: false, w: 28, h: 32};
+    let enemy = {x: 10, y: 8, dir: 1, w: 28, h: 32};
+    let keys = {};
+
+    // --- Canvas ---
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-
-    let player, platforms, coins, enemies, bullets, dog, lives, coinsCount, weapon, item, level, specialReady, specialCooldown, inShop, msg, boss, gameOver;
-
-    // --- Inicialização ---
-    function resetGame() {
-      player = {x: 60, y: H-100, w: 32, h: 48, vx: 0, vy: 0, speed: 4, jump: -13, onGround: false, dir: 1, jetpack: false};
-      platforms = [
-        {x:0, y:H-32, w:W, h:32},
-        {x:120, y:H-120, w:120, h:16},
-        {x:320, y:H-200, w:100, h:16},
-        {x:500, y:H-280, w:120, h:16},
-        {x:700, y:H-360, w:80, h:16},
-        {x:600, y:H-80, w:120, h:16}
-      ];
-      coins = [
-        {x:140, y:H-140, taken:false},
-        {x:340, y:H-220, taken:false},
-        {x:520, y:H-300, taken:false},
-        {x:720, y:H-380, taken:false}
-      ];
-      enemies = [
-        {x:350, y:H-248, w:32, h:32, vx:2, hp:2, alive:true, type:'zumbi'},
-        {x:720, y:H-392, w:32, h:32, vx:-2, hp:2, alive:true, type:'robô'}
-      ];
-      bullets = [];
-      dog = null;
-      lives = 3;
-      coinsCount = 0;
-      weapon = "Pistola";
-      item = "Nenhum";
-      level = 1;
-      specialReady = true;
-      specialCooldown = 0;
-      inShop = false;
-      msg = "";
-      boss = {x: W-100, y: H-112, w: 48, h: 64, hp: 10, alive: true, type: 'chefe'};
-      gameOver = false;
-      updateHUD();
-      loop();
-    }
-
-    function updateHUD() {
-      document.getElementById('lives').textContent = "Vidas: " + lives;
-      document.getElementById('coins').textContent = "Moedas: " + coinsCount;
-      document.getElementById('weapon').textContent = "Arma: " + weapon;
-      document.getElementById('item').textContent = "Apetrecho: " + item;
-      document.getElementById('level').textContent = "Nível: " + level;
-      document.getElementById('special').textContent = "Especial: " + (specialReady ? "Pronto" : "Recarregando");
-      document.getElementById('shop-coins').textContent = coinsCount;
-    }
 
     // --- Controles ---
-    let keys = {};
-    document.addEventListener('keydown', e => {
-      keys[e.key.toLowerCase()] = true;
-      if (e.key === 'a' || e.key === 'A') jump();
-      if (e.key === 's' || e.key === 'S') shoot();
-      if (e.key === 'd' || e.key === 'D') special();
-    });
+    document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
     document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-    // --- Física e movimentação ---
-    function jump() {
-      if (player.onGround) {
-        player.vy = player.jump;
-        player.onGround = false;
-      } else if (item === "Jetpack" || player.jetpack) {
-        player.vy = player.jump * 0.7;
-      }
-    }
-    function shoot() {
-      if (gameOver) return;
-      bullets.push({
-        x: player.x + player.w/2 + 12*player.dir,
-        y: player.y + player.h/2,
-        vx: (weapon === "Metralhadora" ? 12 : 8) * player.dir,
-        vy: 0,
-        color: weapon === "Metralhadora" ? "#ffeb3b" : "#fff"
-      });
-    }
-    function special() {
-      if (!specialReady || gameOver) return;
-      dog = {x: player.x, y: player.y+player.h-16, w:32, h:20, vx:10, active:true, t:0};
-      specialReady = false;
-      specialCooldown = 300; // 5 segundos
-      updateHUD();
-    }
-
-    // --- Loja ---
-    function openShop() {
-      inShop = true;
-      document.getElementById('shop').style.display = 'flex';
-      updateHUD();
-    }
-    function closeShop() {
-      inShop = false;
-      document.getElementById('shop').style.display = 'none';
-    }
-    function buy(type) {
-      if (type === "arma" && coinsCount >= 10) {
-        weapon = "Metralhadora";
-        coinsCount -= 10;
-        msg = "Você comprou uma Metralhadora!";
-      }
-      if (type === "jetpack" && coinsCount >= 8) {
-        item = "Jetpack";
-        player.jetpack = true;
-        coinsCount -= 8;
-        msg = "Você comprou um Jetpack!";
-      }
-      if (type === "vida" && coinsCount >= 5) {
-        lives++;
-        coinsCount -= 5;
-        msg = "Você ganhou +1 vida!";
-      }
-      updateHUD();
-    }
-
-    // --- Loop principal ---
+    // --- Loop ---
     function update() {
-      if (gameOver || inShop) return;
+      // Movimento player
+      if (keys['arrowleft']) player.vx = -2.5;
+      else if (keys['arrowright']) player.vx = 2.5;
+      else player.vx = 0;
 
-      // Movimento
-      if (keys['arrowleft']) { player.x -= player.speed; player.dir = -1; }
-      if (keys['arrowright']) { player.x += player.speed; player.dir = 1; }
-      player.x = Math.max(0, Math.min(W-player.w, player.x));
+      // Pulo
+      if (keys['a'] && player.onGround) {
+        player.vy = -7;
+        player.onGround = false;
+      }
 
       // Gravidade
-      player.vy += 0.7;
+      player.vy += 0.35;
+      let nx = player.x + player.vx;
+      let ny = player.y + player.vy;
+
+      // Colisão com tiles
+      player.onGround = false;
+      for (let y=0; y<10; y++) for (let x=0; x<20; x++) {
+        let t = maps[level][y][x];
+        if (t === 1 || t === 2 || t === 3) {
+          let tx = x*tileSize, ty = y*tileSize;
+          if (nx*tileSize+player.w > tx && nx*tileSize < tx+tileSize &&
+              ny*tileSize+player.h > ty && ny*tileSize < ty+tileSize) {
+            if (player.vy > 0) { ny = y-1; player.vy = 0; player.onGround = true; }
+            if (t === 2) player.vx *= 0.7; // água
+            if (t === 3) { lives--; player.x = 2; player.y = 7; }
+          }
+        }
+      }
+      player.x += player.vx;
       player.y += player.vy;
 
-      // Plataformas
-      player.onGround = false;
-      for (let p of platforms) {
-        if (player.x + player.w > p.x && player.x < p.x + p.w &&
-            player.y + player.h > p.y && player.y + player.h < p.y + p.h + 16 &&
-            player.vy >= 0) {
-          player.y = p.y - player.h;
-          player.vy = 0;
-          player.onGround = true;
-        }
-      }
+      // Limites
+      if (player.x < 0) player.x = 0;
+      if (player.x > 19) player.x = 19;
+      if (player.y > 8) { player.x = 2; player.y = 7; lives--; }
 
-      // Moedas
-      for (let c of coins) {
-        if (!c.taken && Math.abs(player.x-c.x)<24 && Math.abs(player.y-c.y)<24) {
-          c.taken = true;
-          coinsCount++;
-          msg = "Você pegou uma moeda!";
-          updateHUD();
-        }
-      }
-
-      // Inimigos
-      for (let e of enemies) {
-        if (!e.alive) continue;
-        e.x += e.vx;
-        if (e.x < 0 || e.x > W-e.w) e.vx *= -1;
-        // Colisão com player
-        if (Math.abs(player.x-e.x)<28 && Math.abs(player.y-e.y)<32) {
-          lives--;
-          player.x = 60; player.y = H-100; player.vy = 0;
-          if (lives <= 0) { gameOver = true; }
-          updateHUD();
-        }
-      }
-
-      // Boss
-      if (boss.alive) {
-        boss.x += Math.sin(Date.now()/600)*2;
-        if (Math.abs(player.x-boss.x)<40 && Math.abs(player.y-boss.y)<48) {
-          lives--;
-          player.x = 60; player.y = H-100; player.vy = 0;
-          if (lives <= 0) { gameOver = true; }
-          updateHUD();
-        }
-      }
-
-      // Bullets
-      for (let b of bullets) {
-        b.x += b.vx;
-        b.y += b.vy;
-        // Inimigos
-        for (let e of enemies) {
-          if (!e.alive) continue;
-          if (Math.abs(b.x-e.x)<24 && Math.abs(b.y-e.y)<24) {
-            e.hp--;
-            if (e.hp <= 0) e.alive = false;
-            b.x = -1000;
+      // Colisão com moeda
+      for (let y=0; y<10; y++) for (let x=0; x<20; x++) {
+        if (maps[level][y][x] === 4) {
+          let tx = x*tileSize, ty = y*tileSize;
+          if (player.x*tileSize+player.w > tx && player.x*tileSize < tx+tileSize &&
+              player.y*tileSize+player.h > ty && player.y*tileSize < ty+tileSize) {
+            maps[level][y][x] = 0;
+            coins++;
           }
         }
-        // Boss
-        if (boss.alive && Math.abs(b.x-boss.x)<40 && Math.abs(b.y-boss.y)<48) {
-          boss.hp--;
-          if (boss.hp <= 0) { boss.alive = false; }
-          b.x = -1000;
-        }
-      }
-      bullets = bullets.filter(b => b.x > -20 && b.x < W+20);
-
-      // Cachorro especial
-      if (dog && dog.active) {
-        dog.x += dog.vx;
-        dog.t++;
-        // Ataca inimigos
-        for (let e of enemies) {
-          if (!e.alive) continue;
-          if (Math.abs(dog.x-e.x)<32 && Math.abs(dog.y-e.y)<32) {
-            e.alive = false;
-          }
-        }
-        // Ataca boss
-        if (boss.alive && Math.abs(dog.x-boss.x)<40 && Math.abs(dog.y-boss.y)<48) {
-          boss.hp -= 3;
-          if (boss.hp <= 0) boss.alive = false;
-        }
-        if (dog.x > W || dog.t > 60) dog.active = false;
       }
 
-      // Especial cooldown
-      if (!specialReady) {
-        specialCooldown--;
-        if (specialCooldown <= 0) {
-          specialReady = true;
-          updateHUD();
-        }
+      // Inimigo simples
+      enemy.x += 0.03 * enemy.dir;
+      if (enemy.x < 1 || enemy.x > 18) enemy.dir *= -1;
+      // Colisão player-inimigo
+      if (Math.abs(player.x-enemy.x)<0.7 && Math.abs(player.y-enemy.y)<0.7) {
+        player.x = 2; player.y = 7; lives--;
       }
 
-      // Fim de fase
-      if (!boss.alive && player.x > W-60) {
-        level++;
-        if (level > 20) {
-          gameOver = true;
-        } else {
-          nextLevel();
-        }
-      }
+      // HUD
+      document.getElementById('lives').textContent = "❤️".repeat(lives);
+      document.getElementById('coins').textContent = "Moedas: "+coins;
+      document.getElementById('level').textContent = "Fase: "+(level+1);
     }
 
-    function nextLevel() {
-      // Mais dificuldade, mais inimigos, moedas, boss mais forte
-      platforms.push({x:Math.random()*(W-200), y:Math.random()*(H-200)+100, w:100+Math.random()*100, h:16});
-      coins.push({x:Math.random()*(W-60)+30, y:Math.random()*(H-200)+60, taken:false});
-      enemies.push({x:Math.random()*(W-60)+30, y:Math.random()*(H-200)+60, w:32, h:32, vx:2+level*0.2, hp:2+level, alive:true, type:level%2==0?'robô':'zumbi'});
-      boss = {x: W-100, y: H-112, w: 48, h: 64, hp: 10+level*2, alive: true, type: 'chefe'};
-      player.x = 60; player.y = H-100; player.vy = 0;
-      updateHUD();
-    }
-
-    // --- Renderização ---
     function draw() {
-      ctx.clearRect(0,0,W,H);
-      // Fundo
-      ctx.fillStyle = "#23235b";
-      ctx.fillRect(0,0,W,H);
-
-      // Plataformas
-      ctx.fillStyle = "#607d8b";
-      for (let p of platforms) ctx.fillRect(p.x, p.y, p.w, p.h);
-
-      // Moedas
-      for (let c of coins) {
-        if (c.taken) continue;
-        ctx.beginPath();
-        ctx.arc(c.x+12, c.y+8, 10, 0, Math.PI*2);
-        ctx.fillStyle = "#ffeb3b";
-        ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.stroke();
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      // Tiles
+      for (let y=0; y<10; y++) for (let x=0; x<20; x++) {
+        let t = maps[level][y][x];
+        if (t === 1) { // chão
+          ctx.fillStyle = "#654321";
+          ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
+        }
+        if (t === 2) { // água
+          ctx.fillStyle = "#2196f3";
+          ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
+        }
+        if (t === 3) { // espinho
+          ctx.fillStyle = "#b71c1c";
+          ctx.beginPath();
+          ctx.moveTo(x*tileSize, (y+1)*tileSize);
+          ctx.lineTo(x*tileSize+tileSize/2, y*tileSize);
+          ctx.lineTo((x+1)*tileSize, (y+1)*tileSize);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (t === 4) { // moeda
+          ctx.drawImage(coinSprite, x*tileSize+8, y*tileSize+8, 16, 16);
+        }
       }
-
-      // Inimigos
-      for (let e of enemies) {
-        if (!e.alive) continue;
-        ctx.fillStyle = e.type==='zumbi'?"#e53935":"#00bcd4";
-        ctx.fillRect(e.x, e.y, e.w, e.h);
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(e.x+8, e.y+4, 8, 8);
-      }
-
-      // Boss
-      if (boss.alive) {
-        ctx.fillStyle = "#ff7043";
-        ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(boss.x+12, boss.y+8, 20, 16);
-        ctx.fillStyle = "#ffeb3b";
-        ctx.fillRect(boss.x+8, boss.y+boss.h-10, boss.hp*2, 6);
-      }
-
       // Player
-      ctx.save();
-      ctx.translate(player.x, player.y);
-      ctx.fillStyle = "#ffe082";
-      ctx.fillRect(0, 0, player.w, player.h);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(6, 0, 20, 18);
-      ctx.fillStyle = "#bdbdbd";
-      ctx.fillRect(player.dir>0?player.w-8:-8, 18, 8, 12);
-      ctx.fillStyle = "#039be5";
-      ctx.fillRect(6, player.h-12, 8, 12);
-      ctx.fillRect(18, player.h-12, 8, 12);
-      if (item === "Jetpack" || player.jetpack) {
-        ctx.fillStyle = "#ff4081";
-        ctx.fillRect(-6, 18, 8, 18);
-      }
-      ctx.restore();
-
-      // Bullets
-      for (let b of bullets) {
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 6, 0, Math.PI*2);
-        ctx.fillStyle = b.color;
-        ctx.fill();
-      }
-
-      // Cachorro especial
-      if (dog && dog.active) {
-        ctx.save();
-        ctx.translate(dog.x, dog.y);
-        ctx.fillStyle = "#a0522d";
-        ctx.fillRect(0, 0, dog.w, dog.h);
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(20, 4, 8, 8);
-        ctx.restore();
-      }
-
-      // Mensagem
-      if (msg) {
-        ctx.font = "20px Arial";
-        ctx.fillStyle = "#ffeb3b";
-        ctx.fillText(msg, W/2-80, 40);
-        setTimeout(()=>{msg="";}, 1200);
-      }
-
-      // Game Over
-      if (gameOver) {
-        ctx.font = "38px Arial";
-        ctx.fillStyle = "#ff4081";
-        ctx.textAlign = "center";
-        ctx.shadowColor = "#000";
-        ctx.shadowBlur = 10;
-        ctx.fillText("Game Over!", W/2, H/2);
-        ctx.font = "22px Arial";
-        ctx.fillStyle = "#fff";
-        ctx.shadowBlur = 0;
-        ctx.fillText("Recarregue a página para jogar de novo.", W/2, H/2 + 40);
-      }
+      ctx.drawImage(playerSprite, player.x*tileSize, player.y*tileSize, player.w, player.h);
+      // Inimigo
+      ctx.drawImage(enemySprite, enemy.x*tileSize, enemy.y*tileSize, enemy.w, enemy.h);
     }
 
     function loop() {
       update();
       draw();
-      if (!gameOver) requestAnimationFrame(loop);
+      requestAnimationFrame(loop);
     }
 
     // --- Iniciar ---
-    resetGame();
+    playerSprite.onload = () => loop();
   </script>
 </body>
 </html>
