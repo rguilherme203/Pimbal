@@ -1,5 +1,5 @@
 body {
-  background: linear-gradient(to bottom, #1e3c72 0%, #2a5298 100%);
+  background: linear-gradient(to bottom, #23235b 0%, #0f1021 100%);
   color: #fff;
   text-align: center;
   font-family: 'Segoe UI', Arial, sans-serif;
@@ -21,7 +21,7 @@ h1 {
 }
 
 canvas {
-  background: linear-gradient(to bottom, #0a2342 0%, #0b3d91 100%);
+  background: #181c2b;
   border: 6px solid #00ffe7;
   border-radius: 18px;
   display: block;
@@ -37,7 +37,7 @@ canvas {
   margin-top: 10px;
 }
 
-#score, #oxygen {
+#lives, #level, #item {
   font-size: 1.2em;
   color: #00ffe7;
   font-weight: bold;
