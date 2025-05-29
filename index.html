@@ -2,11 +2,11 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Plataformer Dave Style</title>
+  <title>Dangerous Dave Style</title>
   <meta name="viewport" content="width=900, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    canvas { background: #1e293b; display: block; margin: 0 auto; border-radius: 16px; box-shadow: 0 8px 32px #000a; }
+    canvas { background: #222; display: block; margin: 0 auto; border-radius: 12px; box-shadow: 0 8px 32px #000a; }
     .hud { font-family: Arial, sans-serif; }
     .mobile-controls { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 50; display: flex; gap: 12px; }
     .mobile-controls button { width: 56px; height: 56px; border-radius: 50%; background: #334155; color: #fff; font-size: 2rem; border: none; box-shadow: 0 2px 8px #0005; }
@@ -14,15 +14,14 @@
   </style>
 </head>
 <body class="bg-gradient-to-b from-blue-900 to-gray-900 min-h-screen flex flex-col items-center">
-  <h1 class="text-2xl text-white font-bold mt-6 mb-2">Plataformer Dave Style</h1>
-  <div class="hud flex gap-6 text-white text-lg mb-2">
-    <span id="hud-lives">❤️ 3</span>
-    <span id="hud-coins">🪙 0</span>
-    <span id="hud-keys">🔑 0</span>
+  <h1 class="text-2xl text-white font-bold mt-6 mb-2">Dangerous Dave Style</h1>
+  <div class="hud flex gap-6 text-white text-lg mb-2" style="background:#111a; border-radius:8px; padding:6px 18px;">
+    <span id="hud-lives">Dave: <span style="color:#f87171">3</span></span>
+    <span id="hud-coins">Pontuação: <span style="color:#fde047">0</span></span>
     <span id="hud-level">Fase 1</span>
   </div>
   <canvas id="game" width="900" height="540"></canvas>
-  <div class="text-white mt-2 text-sm">Controles: ← → ou A/D para andar, ↑ ou W para pular, ↓ ou S para descer escada, Espaço para ação</div>
+  <div class="text-white mt-2 text-sm">Controles: ← → ou A/D para andar, ↑ ou W para pular/subir escada, ↓ ou S para descer, Espaço para ação</div>
   <div id="msg" class="text-yellow-200 text-lg mt-2"></div>
   <div class="mobile-controls">
     <button id="btn-left">⟵</button>
@@ -38,17 +37,15 @@
     const W = canvas.width, H = canvas.height;
     const GRAVITY = 0.7, JUMP = -13, SPEED = 4, LADDER_SPEED = 2.5;
     const BLOCK = 40, PLAYER_W = 32, PLAYER_H = 54;
-    const CAMERA_MARGIN_X = 250, CAMERA_MARGIN_Y = 120;
     const COLORS = {
-      bg: "#1e293b", block: "#64748b", ladder: "#fbbf24", water: "#38bdf8", trap: "#ef4444",
-      coin: "#fde047", enemy: "#f87171", boss: "#a21caf", player: "#facc15", arm: "#fbbf24", leg: "#fbbf24",
+      bg: "#222", block: "#bcbcbc", blockEdge: "#888", ladder: "#eab308", water: "#60a5fa", trap: "#ef4444",
+      coin: "#fde047", enemy: "#f87171", boss: "#a21caf", player: "#fff", arm: "#fff", leg: "#fff",
       door: "#a3e635", key: "#f59e42", heart: "#ef4444"
     };
 
-    // --- Mapa com múltiplas salas/etapas ---
+    // --- Mapa com escadas acessíveis e inimigos visíveis ---
     const level = {
       map: [
-        // 0         10        20        30        40        50        60        70
         "....................................................................................",
         "....................................................................................",
         "....................................................................................",
@@ -71,25 +68,6 @@
         "#########L#######~~~~~#######B##.............#.............#.............#..........",
         "....................................................................................",
         ".............C.................E.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
-        "#########L#######~~~~~#######B##.............#.............#.............#..........",
-        "....................................................................................",
-        ".............K.................D.............#.............#.............#..........",
-        ".............#.................#.............#.............#.............#..........",
         ".............#.................#.............#.............#.............#..........",
         ".............#.................#.............#.............#.............#..........",
         ".............#.................#.............#.............#.............#..........",
@@ -107,21 +85,20 @@
         ".............#.................#.............#.............#.............#..........",
         "#########L#######~~~~~#######B##.............#.............#.............#.........."
       ],
-      msg: "Explore, colete moedas, pegue a chave, abra a porta e derrote o chefão!"
+      msg: "Explore, colete moedas, suba escadas (alinhe-se ao centro), derrote inimigos e o chefão!"
     };
 
     // --- Estado do jogo ---
     let state = {
       lives: 3,
       coins: 0,
-      keys: 0,
       msg: "",
       won: false,
       lost: false
     };
 
     // --- Objetos do jogo ---
-    let player, enemies, boss, coins, ladders, blocks, waters, traps, doors, keysObj;
+    let player, enemies, boss, coins, ladders, blocks, waters, traps;
     let camera = {x: 0, y: 0};
 
     // --- Inicialização ---
@@ -129,9 +106,8 @@
       state.msg = level.msg;
       state.won = false;
       state.lost = false;
-      state.keys = 0;
       // Parse mapa
-      blocks = [], ladders = [], waters = [], traps = [], coins = [], enemies = [], doors = [], keysObj = [];
+      blocks = [], ladders = [], waters = [], traps = [], coins = [], enemies = [];
       boss = null;
       const map = level.map;
       for (let y = 0; y < map.length; y++) {
@@ -145,8 +121,6 @@
           if (c === "C") coins.push({x: px + BLOCK/2, y: py + BLOCK/2, taken: false, anim: 0});
           if (c === "E") enemies.push({x: px, y: py, dir: 1, alive: true, patrol: [px-40, px+80], ai: 0});
           if (c === "B") boss = {x: px, y: py, hp: 7, alive: true, attackT: 0, proj: []};
-          if (c === "D") doors.push({x: px, y: py, open: false});
-          if (c === "K") keysObj.push({x: px + BLOCK/2, y: py + BLOCK/2, taken: false, anim: 0});
         }
       }
       // Player
@@ -171,8 +145,11 @@
       else if (keys.right) { player.vx = SPEED; player.facing = 1; }
       else player.vx = 0;
 
-      // Escada
-      player.onLadder = ladders.some(lad => rectsCollide(player, lad, PLAYER_W, PLAYER_H, BLOCK, BLOCK));
+      // Escada (alinhar ao centro)
+      player.onLadder = ladders.some(lad =>
+        player.x + PLAYER_W/2 > lad.x + 10 && player.x + PLAYER_W/2 < lad.x + BLOCK - 10 &&
+        player.y + PLAYER_H > lad.y + 8 && player.y < lad.y + BLOCK + 32
+      );
       if (player.onLadder && (keys.up || keys.down)) {
         player.climbing = true;
         player.vy = keys.up ? -LADDER_SPEED : keys.down ? LADDER_SPEED : 0;
@@ -229,19 +206,6 @@
         }
       }
 
-      // Portas
-      for (let d of doors) {
-        if (!d.open && rectsCollide(player, d, PLAYER_W, PLAYER_H, BLOCK, BLOCK)) {
-          if (state.keys > 0 && keys.attack) {
-            d.open = true;
-            state.keys--;
-            state.msg = "Porta aberta!";
-          } else if (!d.open) {
-            state.msg = "Precisa de uma chave!";
-          }
-        }
-      }
-
       // Água
       let inWater = waters.some(w => rectsCollide(player, w, PLAYER_W, PLAYER_H, BLOCK, BLOCK));
       if (inWater) {
@@ -267,27 +231,17 @@
         c.anim += 0.1;
         if (!c.taken && Math.abs(player.x + PLAYER_W/2 - c.x) < 24 && Math.abs(player.y + PLAYER_H/2 - c.y) < 24) {
           c.taken = true;
-          state.coins++;
+          state.coins += 100;
           state.msg = "Moeda coletada!";
-        }
-      }
-
-      // Chaves
-      for (let k of keysObj) {
-        k.anim += 0.1;
-        if (!k.taken && Math.abs(player.x + PLAYER_W/2 - k.x) < 24 && Math.abs(player.y + PLAYER_H/2 - k.y) < 24) {
-          k.taken = true;
-          state.keys++;
-          state.msg = "Chave coletada!";
         }
       }
 
       // Inimigos
       for (let e of enemies) {
         if (!e.alive) continue;
-        // IA: segue o player se perto
+        // IA: patrulha e segue o player se perto
         let dist = Math.abs(player.x - e.x);
-        if (dist < 120) {
+        if (dist < 160) {
           e.dir = player.x < e.x ? -1 : 1;
           e.x += e.dir * 1.5;
         } else {
@@ -357,12 +311,21 @@
       ctx.fillStyle = COLORS.bg;
       ctx.fillRect(0, 0, W, H);
 
-      // Blocos
+      // Blocos (com textura)
       for (let b of blocks) {
         ctx.fillStyle = COLORS.block;
         ctx.fillRect(b.x - camera.x, b.y - camera.y, BLOCK, BLOCK);
-        ctx.strokeStyle = "#334155";
+        ctx.strokeStyle = COLORS.blockEdge;
+        ctx.lineWidth = 2;
         ctx.strokeRect(b.x - camera.x, b.y - camera.y, BLOCK, BLOCK);
+        // Textura
+        ctx.strokeStyle = "#fff2";
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(b.x - camera.x + 6 + i*10, b.y - camera.y + 8 + i*8);
+          ctx.lineTo(b.x - camera.x + 18 + i*6, b.y - camera.y + 18 + i*6);
+          ctx.stroke();
+        }
       }
       // Escadas
       for (let l of ladders) {
@@ -372,25 +335,23 @@
         ctx.beginPath();
         ctx.moveTo(l.x + 20 - camera.x, l.y - camera.y); ctx.lineTo(l.x + 20 - camera.x, l.y + BLOCK - camera.y);
         ctx.stroke();
+        // Degraus
+        ctx.strokeStyle = "#b45309";
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(l.x + 12 - camera.x, l.y + 6 + i*8 - camera.y);
+          ctx.lineTo(l.x + 28 - camera.x, l.y + 6 + i*8 - camera.y);
+          ctx.stroke();
+        }
       }
       // Água
       for (let w of waters) {
         ctx.fillStyle = COLORS.water;
         ctx.fillRect(w.x - camera.x, w.y - camera.y, BLOCK, BLOCK);
-      }
-      // Armadilhas
-      for (let t of traps) {
-        ctx.save();
-        ctx.translate(t.x - camera.x, t.y - camera.y);
-        ctx.rotate(Math.sin(t.anim)*0.2);
-        ctx.fillStyle = COLORS.trap;
+        ctx.strokeStyle = "#fff4";
         ctx.beginPath();
-        ctx.moveTo(0, BLOCK);
-        ctx.lineTo(BLOCK/2, 0);
-        ctx.lineTo(BLOCK, BLOCK);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+        ctx.arc(w.x + 20 - camera.x, w.y + 20 - camera.y, 16, 0, Math.PI*2);
+        ctx.stroke();
       }
       // Moedas
       for (let c of coins) {
@@ -401,35 +362,14 @@
           ctx.beginPath();
           ctx.arc(0, 0, 12, 0, 2 * Math.PI);
           ctx.fillStyle = COLORS.coin;
+          ctx.shadowColor = "#fff";
+          ctx.shadowBlur = 8;
           ctx.fill();
+          ctx.shadowBlur = 0;
           ctx.strokeStyle = "#b45309";
           ctx.stroke();
           ctx.restore();
         }
-      }
-      // Chaves
-      for (let k of keysObj) {
-        if (!k.taken) {
-          ctx.save();
-          ctx.translate(k.x - camera.x, k.y - camera.y - Math.sin(k.anim)*6);
-          ctx.rotate(Math.sin(k.anim)*0.2);
-          ctx.fillStyle = COLORS.key;
-          ctx.beginPath();
-          ctx.arc(0, 0, 10, 0, 2 * Math.PI);
-          ctx.fill();
-          ctx.fillRect(0, -2, 16, 4);
-          ctx.restore();
-        }
-      }
-      // Portas
-      for (let d of doors) {
-        ctx.save();
-        ctx.translate(d.x - camera.x, d.y - camera.y);
-        ctx.fillStyle = d.open ? "#a3e635" : "#444";
-        ctx.fillRect(0, 0, BLOCK, BLOCK*2);
-        ctx.strokeStyle = "#fff";
-        ctx.strokeRect(0, 0, BLOCK, BLOCK*2);
-        ctx.restore();
       }
       // Inimigos
       for (let e of enemies) {
@@ -453,9 +393,8 @@
       drawDaveMan(player.x + PLAYER_W/2 - camera.x, player.y + PLAYER_H - camera.y, "player", 0, player.facing, player.attacking, player.animT);
 
       // HUD
-      document.getElementById('hud-lives').textContent = "❤️ " + state.lives;
-      document.getElementById('hud-coins').textContent = "🪙 " + state.coins;
-      document.getElementById('hud-keys').textContent = "🔑 " + state.keys;
+      document.getElementById('hud-lives').innerHTML = 'Dave: <span style="color:#f87171">' + state.lives + '</span>';
+      document.getElementById('hud-coins').innerHTML = 'Pontuação: <span style="color:#fde047">' + state.coins + '</span>';
       document.getElementById('hud-level').textContent = "Fase 1";
       document.getElementById('msg').textContent = state.msg || "";
     }
@@ -465,39 +404,49 @@
       ctx.save();
       ctx.translate(x, y);
       // Pernas
-      ctx.strokeStyle = "#b45309";
-      ctx.lineWidth = 6;
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 7;
       ctx.beginPath();
       ctx.moveTo(-6, 0);
       ctx.lineTo(-10, 22 + Math.sin(animT/4)*2);
       ctx.moveTo(6, 0);
       ctx.lineTo(10, 22 + Math.cos(animT/4)*2);
       ctx.stroke();
-      // Tronco
-      ctx.strokeStyle = type === "player" ? "#facc15" : (type === "boss" ? "#a21caf" : "#f87171");
-      ctx.lineWidth = 10;
+      // Tênis
+      ctx.fillStyle = "#f1f5f9";
+      ctx.beginPath();
+      ctx.arc(-10, 24 + Math.sin(animT/4)*2, 5, 0, Math.PI*2);
+      ctx.arc(10, 24 + Math.cos(animT/4)*2, 5, 0, Math.PI*2);
+      ctx.fill();
+      // Tronco (camiseta vermelha)
+      ctx.strokeStyle = type === "player" ? "#dc2626" : (type === "boss" ? "#a21caf" : "#f87171");
+      ctx.lineWidth = 13;
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(0, -28);
       ctx.stroke();
-      // Braços
-      ctx.strokeStyle = "#fbbf24";
-      ctx.lineWidth = 7;
+      // Braços (branco)
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 8;
       ctx.beginPath();
       ctx.moveTo(0, -18);
       ctx.lineTo(-18 * facing, -18 + Math.sin(animT/6)*6);
       ctx.moveTo(0, -18);
       ctx.lineTo(18 * facing, -18 + Math.cos(animT/6)*6);
       ctx.stroke();
-      // Ataque
-      if (attacking) {
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.moveTo(0, -18);
-        ctx.lineTo(32 * facing, -18);
-        ctx.stroke();
-      }
+      // Mãos
+      ctx.fillStyle = "#fde68a";
+      ctx.beginPath();
+      ctx.arc(-18 * facing, -18 + Math.sin(animT/6)*6, 5, 0, Math.PI*2);
+      ctx.arc(18 * facing, -18 + Math.cos(animT/6)*6, 5, 0, Math.PI*2);
+      ctx.fill();
+      // Calça azul
+      ctx.strokeStyle = "#2563eb";
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, 18);
+      ctx.stroke();
       // Cabeça
       ctx.beginPath();
       ctx.arc(0, -36, 14, 0, 2 * Math.PI);
@@ -505,6 +454,11 @@
       ctx.fill();
       ctx.strokeStyle = "#fff";
       ctx.stroke();
+      // Cabelo (marrom)
+      ctx.fillStyle = "#78350f";
+      ctx.beginPath();
+      ctx.arc(0, -44, 10, Math.PI*1.1, Math.PI*1.9);
+      ctx.fill();
       // Rosto
       ctx.save();
       ctx.translate(0, -36);
